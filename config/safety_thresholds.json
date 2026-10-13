@@ -1,0 +1,66 @@
+{
+  "version": "1.1",
+  "document_classification": "conservative_prototype_heuristic_specification",
+  "review_status": "PROTOTYPE_HEURISTIC_PENDING_FORMAL_OEM_AUTOMOTIVE_ENGINEER_SIGNOFF",
+  "description": "Centralized physical sensor safety thresholds, operating envelopes, OEM applicability, and engineering justifications for connected vehicle telematics. These rules serve as prototype conservative safety nets and must not be treated as authoritative OEM production limits without vehicle-specific dyno and track calibration.",
+  "general_governance_notice": "Safety-critical thresholds documented herein are conservative prototype heuristics. General industry standards (e.g., SAE J661, ISO 10816, SAE J537) provide reference benchmarks but do not constitute vehicle-specific OEM calibration limits. Thresholds must be calibrated per engine displacement, brake rotor metallurgy, and battery chemistry under review by a qualified automotive engineer.",
+  "subsystems": {
+    "engine": {
+      "threshold_classification": "conservative_prototype_threshold",
+      "authoritative_status": "unvalidated_prototype_rule",
+      "applicable_conditions": "Steady-state cruising, ambient temperature -20C to +40C, warm engine operating range",
+      "vehicle_applicability": "Medium/Heavy commercial internal-combustion fleet prototypes (Class 4-8); not calibrated for passenger EVs or hybrid powertrains",
+      "overheat_warning_temp_c": 105.0,
+      "overheat_critical_temp_c": 112.0,
+      "coolant_overheat_temp_c": 108.0,
+      "low_oil_warning_psi": 22.0,
+      "low_oil_critical_psi": 15.0,
+      "excessive_vibration_mms": 3.2,
+      "engineering_basis": {
+        "source_reference": "General automotive thermal envelope and hydrodynamic lubrication principles",
+        "thermostat_rationale": "Commercial diesel thermostats typically begin opening at 82C-88C and achieve full stroke at ~98C-100C. Coolant exceeding 105C indicates cooling loop capacity saturation.",
+        "oil_pressure_rationale": "Minimum hydrodynamic journal bearing oil film preservation under operational load requires ~20-25 psi. Pressure under 15 psi risks metal-to-metal boundary friction.",
+        "vibration_rationale": "Threshold draws from ISO 10816 Class II/III general machinery standards (vibration velocity > 3.2 mm/s RMS)."
+      },
+      "engineering_limitations": "ISO 10816 is an industrial rotating machinery standard and does not account for vehicle chassis vibration, road surface roughness (potholes/rumble strips), or cylinder firing orders. Oil pressure thresholds vary significantly with engine RPM and oil viscosity grade (e.g. 5W-30 vs 15W-40). Requires OEM engine calibration mapping RPM vs minimum oil pressure."
+    },
+    "brake": {
+      "threshold_classification": "conservative_prototype_threshold",
+      "authoritative_status": "unvalidated_prototype_rule",
+      "applicable_conditions": "Normal fleet service brake cycles, excluding prolonged downhill descent with sustained retarder usage",
+      "vehicle_applicability": "Pneumatic or hydraulic disc brake equipped commercial fleet vehicles with embedded brake wear sensors",
+      "pad_wear_warning_mm": 3.2,
+      "pad_wear_critical_mm": 2.2,
+      "thermal_spike_c": 260.0,
+      "abs_fault_indicator": 1,
+      "engineering_basis": {
+        "source_reference": "SAE J661 friction material wear limits and DOT-4 hydraulic fluid boiling specifications",
+        "pad_wear_rationale": "SAE J661 and fleet maintenance practices recommend friction lining replacement before 3.0mm to avoid backing-plate rivet or metal backing contact against the brake disc rotor.",
+        "thermal_spike_rationale": "DOT-4 dry boiling point is ~230C-260C. Caliper temperatures approaching this threshold risk brake fluid vaporization, leading to hydraulic pedal fade."
+      },
+      "engineering_limitations": "A rotor surface temperature sensor reading of 260C does not necessarily mean the caliper fluid reservoir has reached fluid vaporization temperature, due to thermal gradient across pad friction material and backing plate. Conversely, repeated severe snub braking can boil fluid at lower surface temperatures if heat soaking occurs. Threshold is a conservative prototype flag pending vehicle thermal sensor placement mapping."
+    },
+    "battery": {
+      "threshold_classification": "conservative_prototype_threshold",
+      "authoritative_status": "unvalidated_prototype_rule",
+      "applicable_conditions": "Key-on engine-running (alternator active) or key-off resting stabilization (>30 min rest)",
+      "vehicle_applicability": "12V lead-acid and AGM flooded starter battery systems; not applicable to 24V commercial architectures or 400V/800V EV traction packs",
+      "voltage_warning_v": 11.8,
+      "voltage_critical_v": 11.0,
+      "soh_warning_pct": 50.0,
+      "soh_critical_pct": 40.0,
+      "alternator_undervoltage_v": 12.8,
+      "engineering_basis": {
+        "source_reference": "SAE J537 battery storage and automotive charging system voltage regulation standards",
+        "voltage_rationale": "A 12V lead-acid battery resting at 11.8V represents approximately 20% state-of-charge with accelerated sulfation risk. 11.0V indicates deep discharge or shorted cell.",
+        "alternator_rationale": "Standard automotive alternators regulate charging bus voltage between 13.8V and 14.4V. Output under 12.8V during engine operation indicates diode rectifier failure, stator failure, or belt slip."
+      },
+      "engineering_limitations": "Battery terminal voltage drops transiently during engine cranking (down to 8.5V-9.5V for ~500ms) without indicating failure. Threshold must be evaluated only during key-off rest or steady alternator charging. Internal battery temperature affects open-circuit voltage curves (temp coefficient ~ -3mV/C/cell). Requires temperature-compensated OEM charging table."
+    }
+  },
+  "synthetic_label_alignment": {
+    "engine_failure_imminent": "Simulator flags failure when thermal degradation index exceeds 0.48 or oil pressure degrades below 20 psi.",
+    "brake_issue_imminent": "Simulator flags issue when simulated pad wear thins below 3.0mm or tone ring reluctor creates ABS fault indicator = 1.",
+    "battery_issue_imminent": "Simulator flags issue when simulated resting cell voltage drops below 11.8V or alternator regulator fails below 12.8V."
+  }
+}

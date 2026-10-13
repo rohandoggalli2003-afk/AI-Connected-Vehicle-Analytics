@@ -1,0 +1,79 @@
+{
+  "feature_target_leakage_audit": "PASSED - Zero proxy columns in features",
+  "unseen_vehicles_evaluation": [
+    {
+      "Target": "engine",
+      "Evaluation": "Unseen_Vehicles_Group_Split",
+      "Model": "LogisticRegression",
+      "Features": "Original_Scaled",
+      "Test_Samples": 4400,
+      "Positives": 305,
+      "Precision": 0.9104,
+      "Recall": 1.0,
+      "F1-Score": 0.9531,
+      "ROC-AUC": 0.9998
+    },
+    {
+      "Target": "brake",
+      "Evaluation": "Unseen_Vehicles_Group_Split",
+      "Model": "RandomForest",
+      "Features": "Original_Scaled",
+      "Test_Samples": 4400,
+      "Positives": 320,
+      "Precision": 0.9668,
+      "Recall": 1.0,
+      "F1-Score": 0.9831,
+      "ROC-AUC": 1.0
+    },
+    {
+      "Target": "battery",
+      "Evaluation": "Unseen_Vehicles_Group_Split",
+      "Model": "LogisticRegression",
+      "Features": "Original_Scaled",
+      "Test_Samples": 4400,
+      "Positives": 316,
+      "Precision": 0.9294,
+      "Recall": 1.0,
+      "F1-Score": 0.9634,
+      "ROC-AUC": 0.9999
+    }
+  ],
+  "sensor_perturbation_stress_test": [
+    {
+      "Target": "engine",
+      "Evaluation": "Sensor_Perturbation_Stress_Test",
+      "Model": "LogisticRegression",
+      "Features": "Original_Scaled",
+      "Test_Samples": 4400,
+      "Positives": 305,
+      "Precision": 0.9104,
+      "Recall": 1.0,
+      "F1-Score": 0.9531,
+      "ROC-AUC": 0.9998
+    },
+    {
+      "Target": "brake",
+      "Evaluation": "Sensor_Perturbation_Stress_Test",
+      "Model": "RandomForest",
+      "Features": "Original_Scaled",
+      "Test_Samples": 4400,
+      "Positives": 320,
+      "Precision": 0.9639,
+      "Recall": 1.0,
+      "F1-Score": 0.9816,
+      "ROC-AUC": 1.0
+    },
+    {
+      "Target": "battery",
+      "Evaluation": "Sensor_Perturbation_Stress_Test",
+      "Model": "LogisticRegression",
+      "Features": "Original_Scaled",
+      "Test_Samples": 4400,
+      "Positives": 316,
+      "Precision": 0.9294,
+      "Recall": 1.0,
+      "F1-Score": 0.9634,
+      "ROC-AUC": 0.9999
+    }
+  ]
+}

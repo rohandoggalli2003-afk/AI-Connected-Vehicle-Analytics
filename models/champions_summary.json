@@ -1,0 +1,195 @@
+{
+  "engine": {
+    "Target": "engine",
+    "Model": "LogisticRegression",
+    "Features": "Original_Scaled",
+    "Validation_Recall": 1.0,
+    "Validation_Precision": 1.0,
+    "Validation_PR_AUC": 1.0,
+    "Validation_Cost": 0,
+    "Validation_Meets_Constraints": true,
+    "Constraint_Violation_Flag": false,
+    "Test_Metrics": {
+      "Precision": 1.0,
+      "Recall": 1.0,
+      "F1-Score": 1.0,
+      "ROC-AUC": 1.0,
+      "PR-AUC": 1.0,
+      "Brier_Score": 0.0,
+      "FPR": 0.0,
+      "TP": 180,
+      "FP": 0,
+      "FN": 0,
+      "TN": 2820,
+      "Operational_Cost": 0,
+      "Calibration_Curve": {
+        "prob_true": [
+          0.0,
+          1.0
+        ],
+        "prob_pred": [
+          0.0001,
+          1.0
+        ]
+      }
+    },
+    "preprocessing": {
+      "clipped": true,
+      "scaled": true,
+      "features": "Original_Scaled",
+      "pca": false,
+      "pca_components": null
+    },
+    "Precision": 1.0,
+    "Recall": 1.0,
+    "F1-Score": 1.0,
+    "ROC-AUC": 1.0,
+    "PR-AUC": 1.0,
+    "Brier_Score": 0.0,
+    "FPR": 0.0,
+    "FN": 0,
+    "FP": 0,
+    "Operational_Cost": 0
+  },
+  "brake": {
+    "Target": "brake",
+    "Model": "RandomForest",
+    "Features": "Original_Scaled",
+    "Validation_Recall": 1.0,
+    "Validation_Precision": 1.0,
+    "Validation_PR_AUC": 1.0,
+    "Validation_Cost": 0,
+    "Validation_Meets_Constraints": true,
+    "Constraint_Violation_Flag": false,
+    "Test_Metrics": {
+      "Precision": 1.0,
+      "Recall": 1.0,
+      "F1-Score": 1.0,
+      "ROC-AUC": 1.0,
+      "PR-AUC": 1.0,
+      "Brier_Score": 0.0011,
+      "FPR": 0.0,
+      "TP": 180,
+      "FP": 0,
+      "FN": 0,
+      "TN": 2820,
+      "Operational_Cost": 0,
+      "Calibration_Curve": {
+        "prob_true": [
+          0.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "prob_pred": [
+          0.001,
+          0.7737,
+          0.8628,
+          0.9189
+        ]
+      }
+    },
+    "preprocessing": {
+      "clipped": true,
+      "scaled": true,
+      "features": "Original_Scaled",
+      "pca": false,
+      "pca_components": null
+    },
+    "Precision": 1.0,
+    "Recall": 1.0,
+    "F1-Score": 1.0,
+    "ROC-AUC": 1.0,
+    "PR-AUC": 1.0,
+    "Brier_Score": 0.0011,
+    "FPR": 0.0,
+    "FN": 0,
+    "FP": 0,
+    "Operational_Cost": 0
+  },
+  "battery": {
+    "Target": "battery",
+    "Model": "LogisticRegression",
+    "Features": "Original_Scaled",
+    "Validation_Recall": 1.0,
+    "Validation_Precision": 1.0,
+    "Validation_PR_AUC": 1.0,
+    "Validation_Cost": 0,
+    "Validation_Meets_Constraints": true,
+    "Constraint_Violation_Flag": false,
+    "Test_Metrics": {
+      "Precision": 1.0,
+      "Recall": 1.0,
+      "F1-Score": 1.0,
+      "ROC-AUC": 1.0,
+      "PR-AUC": 1.0,
+      "Brier_Score": 0.0,
+      "FPR": 0.0,
+      "TP": 240,
+      "FP": 0,
+      "FN": 0,
+      "TN": 2760,
+      "Operational_Cost": 0,
+      "Calibration_Curve": {
+        "prob_true": [
+          0.0,
+          1.0
+        ],
+        "prob_pred": [
+          0.0,
+          0.9999
+        ]
+      }
+    },
+    "preprocessing": {
+      "clipped": true,
+      "scaled": true,
+      "features": "Original_Scaled",
+      "pca": false,
+      "pca_components": null
+    },
+    "Precision": 1.0,
+    "Recall": 1.0,
+    "F1-Score": 1.0,
+    "ROC-AUC": 1.0,
+    "PR-AUC": 1.0,
+    "Brier_Score": 0.0,
+    "FPR": 0.0,
+    "FN": 0,
+    "FP": 0,
+    "Operational_Cost": 0
+  },
+  "cost_model_governance": {
+    "C_FN": 5000,
+    "C_FP": 200,
+    "status": "illustrative_project_assumptions",
+    "description": "Illustrative parameter assumptions: $5,000 catastrophic on-road breakdown cost (FN) versus $200 preventive 30-minute shop inspection cost (FP). Not derived from empirical accounting data."
+  },
+  "joint_probability_validation": {
+    "status": "UNCALIBRATED_HEURISTIC_ESTIMATE",
+    "description": "Validation of P_joint = 1 - (1-Pe)(1-Pb)(1-Pbat) against ground-truth union failure outcomes.",
+    "test_samples": 3000,
+    "actual_joint_failures": 600,
+    "estimated_joint_brier_score": 0.0011,
+    "estimated_joint_pr_auc": 1.0,
+    "estimated_joint_roc_auc": 1.0,
+    "pairwise_correlations": {
+      "engine": {
+        "engine": 1.0,
+        "brake": -0.06382978723404267,
+        "battery": -0.07450111597299094
+      },
+      "brake": {
+        "engine": -0.06382978723404267,
+        "brake": 1.0,
+        "battery": -0.0745011159729913
+      },
+      "battery": {
+        "engine": -0.07450111597299094,
+        "brake": -0.0745011159729913,
+        "battery": 1.0
+      }
+    },
+    "independence_assessment": "Subsystem correlation is low/nominal in synthetic baseline, but conditional independence is unvalidated in production. Joint probability remains labeled as estimated_joint_failure_probability."
+  }
+}

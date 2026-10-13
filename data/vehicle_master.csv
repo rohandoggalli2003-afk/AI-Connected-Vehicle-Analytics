@@ -1,0 +1,51 @@
+vehicle_id,brand,vehicle_year,model,fuel_type,base_hub,base_lat,base_lon
+VH-1001,BMW,2018,X5,Hybrid,Chicago Hub,41.8781,-87.6298
+VH-1002,Ford,2019,F-150,Gasoline,San Francisco Bay,37.7749,-122.4194
+VH-1003,BMW,2022,i4,Electric,San Francisco Bay,37.7749,-122.4194
+VH-1004,Freightliner,2018,M2 106,Diesel,San Francisco Bay,37.7749,-122.4194
+VH-1005,Toyota,2019,Camry,Gasoline,Atlanta Distribution,33.749,-84.388
+VH-1006,Freightliner,2022,Cascadia,Diesel,Los Angeles Metro,34.0522,-118.2437
+VH-1007,BMW,2023,i4,Electric,Atlanta Distribution,33.749,-84.388
+VH-1008,Tesla,2021,Model 3,Electric,Atlanta Distribution,33.749,-84.388
+VH-1009,Volvo,2024,VNL 760,Diesel,Los Angeles Metro,34.0522,-118.2437
+VH-1010,BMW,2020,330i,Gasoline,Chicago Hub,41.8781,-87.6298
+VH-1011,Ford,2024,F-150,Gasoline,Chicago Hub,41.8781,-87.6298
+VH-1012,Toyota,2021,Camry,Gasoline,San Francisco Bay,37.7749,-122.4194
+VH-1013,Volvo,2022,XC90,Hybrid,Chicago Hub,41.8781,-87.6298
+VH-1014,Toyota,2021,Tundra,Gasoline,Atlanta Distribution,33.749,-84.388
+VH-1015,Toyota,2018,RAV4,Hybrid,Atlanta Distribution,33.749,-84.388
+VH-1016,Volvo,2022,FH16,Diesel,Chicago Hub,41.8781,-87.6298
+VH-1017,Freightliner,2023,Cascadia,Diesel,San Francisco Bay,37.7749,-122.4194
+VH-1018,Toyota,2019,Tundra,Gasoline,Chicago Hub,41.8781,-87.6298
+VH-1019,Toyota,2024,Camry,Gasoline,San Francisco Bay,37.7749,-122.4194
+VH-1020,Tesla,2021,Model Y,Electric,Chicago Hub,41.8781,-87.6298
+VH-1021,Ford,2020,Explorer,Gasoline,Los Angeles Metro,34.0522,-118.2437
+VH-1022,BMW,2023,330i,Gasoline,San Francisco Bay,37.7749,-122.4194
+VH-1023,Freightliner,2022,Cascadia,Diesel,Los Angeles Metro,34.0522,-118.2437
+VH-1024,Ford,2021,Explorer,Gasoline,Chicago Hub,41.8781,-87.6298
+VH-1025,BMW,2022,i4,Electric,Los Angeles Metro,34.0522,-118.2437
+VH-1026,BMW,2024,330i,Gasoline,San Francisco Bay,37.7749,-122.4194
+VH-1027,Ford,2024,F-150,Gasoline,Chicago Hub,41.8781,-87.6298
+VH-1028,Tesla,2018,Model Y,Electric,Los Angeles Metro,34.0522,-118.2437
+VH-1029,Freightliner,2019,M2 106,Diesel,Dallas Logistics,32.7767,-96.797
+VH-1030,Tesla,2021,Semi,Electric,Los Angeles Metro,34.0522,-118.2437
+VH-1031,Volvo,2019,VNL 760,Diesel,Atlanta Distribution,33.749,-84.388
+VH-1032,Freightliner,2023,M2 106,Diesel,Atlanta Distribution,33.749,-84.388
+VH-1033,Tesla,2021,Semi,Electric,Chicago Hub,41.8781,-87.6298
+VH-1034,Ford,2022,F-150,Gasoline,Dallas Logistics,32.7767,-96.797
+VH-1035,Toyota,2024,Camry,Gasoline,San Francisco Bay,37.7749,-122.4194
+VH-1036,Ford,2019,Mach-E,Electric,Dallas Logistics,32.7767,-96.797
+VH-1037,Freightliner,2021,Cascadia,Diesel,Dallas Logistics,32.7767,-96.797
+VH-1038,Freightliner,2022,M2 106,Diesel,Chicago Hub,41.8781,-87.6298
+VH-1039,Freightliner,2023,Cascadia,Diesel,San Francisco Bay,37.7749,-122.4194
+VH-1040,BMW,2024,i4,Electric,Chicago Hub,41.8781,-87.6298
+VH-1041,BMW,2018,330i,Gasoline,Chicago Hub,41.8781,-87.6298
+VH-1042,Tesla,2021,Model 3,Electric,San Francisco Bay,37.7749,-122.4194
+VH-1043,BMW,2020,i4,Electric,Atlanta Distribution,33.749,-84.388
+VH-1044,Ford,2018,Mach-E,Electric,Chicago Hub,41.8781,-87.6298
+VH-1045,BMW,2022,i4,Electric,Los Angeles Metro,34.0522,-118.2437
+VH-1046,Ford,2024,Explorer,Gasoline,Los Angeles Metro,34.0522,-118.2437
+VH-1047,Freightliner,2022,Cascadia,Diesel,Chicago Hub,41.8781,-87.6298
+VH-1048,Tesla,2018,Model 3,Electric,Chicago Hub,41.8781,-87.6298
+VH-1049,Volvo,2018,VNL 760,Diesel,Los Angeles Metro,34.0522,-118.2437
+VH-1050,Freightliner,2018,Cascadia,Diesel,Dallas Logistics,32.7767,-96.797

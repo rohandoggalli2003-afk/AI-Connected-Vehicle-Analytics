@@ -1,0 +1,162 @@
+================================================================================
+ AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
+================================================================================
+VEHICLE IDENTIFIER      : VH-1002 (2019 Ford F-150)
+TIMESTAMP GENERATED     : 2026-10-13 14:51:49
+HEALTH RISK STATUS      : HEALTHY (Risk Index: 10.0%)
+PRIMARY FAULT DETECTED  : HEALTHY
+SUBSYSTEM CLASSIFICATION: General Inspection
+--------------------------------------------------------------------------------
+TELEMETRIC SENSOR AUDIT:
+  - Odometer Reading    : 178797.0 km (Engine Hours: 3999.83 h)
+  - Vehicle Speed       : 0.0 km/h | Engine RPM: 888.3
+  - Engine Temperature  : 88.39 deg C (Coolant: 85.35 deg C)
+  - Oil Pressure        : 47.63 PSI | Vibration: 1.343
+  - Brake Pad Thickness : 10.58 mm | Brake Temp: 61.05 deg C
+  - Battery Voltage     : 14.07 V | Alternator: 13.61 V
+  - Battery SOH         : 83.68%
+  - GPS Location        : Lat 37.914943, Lon -122.469921
+--------------------------------------------------------------------------------
+PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
+  - Failure Probability : 10.00%
+  - Subsystem Breakdown : Engine=0.1%, Brake=10.0%, Battery=0.1%
+--------------------------------------------------------------------------------
+RECOMMENDED WORKSHOP ACTION:
+  All subsystems operating within nominal OEM tolerances. Continue routine scheduled maintenance interval.
+
+REQUIRED REPLACEMENT PARTS:
+  None
+
+ESTIMATED SERVICE DOWNTIME : 0.0 Hours
+================================================================================
+
+================================================================================
+ AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
+================================================================================
+VEHICLE IDENTIFIER      : VH-1001 (2018 BMW X5)
+TIMESTAMP GENERATED     : 2026-10-13 14:51:49
+HEALTH RISK STATUS      : CRITICAL (Risk Index: 99.8%)
+PRIMARY FAULT DETECTED  : ENGINE OVERHEAT
+SUBSYSTEM CLASSIFICATION: Powertrain / Cooling
+--------------------------------------------------------------------------------
+TELEMETRIC SENSOR AUDIT:
+  - Odometer Reading    : 199248.06 km (Engine Hours: 4376.72 h)
+  - Vehicle Speed       : 72.3 km/h | Engine RPM: 3215.8
+  - Engine Temperature  : 122.2 deg C (Coolant: 115.61 deg C)
+  - Oil Pressure        : 55.37 PSI | Vibration: 2.962
+  - Brake Pad Thickness : 11.11 mm | Brake Temp: 236.62 deg C
+  - Battery Voltage     : 13.61 V | Alternator: 14.31 V
+  - Battery SOH         : 86.22%
+  - GPS Location        : Lat 41.97176, Lon -87.601247
+--------------------------------------------------------------------------------
+PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
+  - Failure Probability : 99.84%
+  - Subsystem Breakdown : Engine=99.8%, Brake=9.2%, Battery=0.1%
+  - Physical Alerts     : Engine Overheating (122.2 deg C)
+--------------------------------------------------------------------------------
+RECOMMENDED WORKSHOP ACTION:
+  Inspect radiator coolant flow, check water pump impeller, verify thermostat valve opening, and pressure-test cylinder head gasket.
+
+REQUIRED REPLACEMENT PARTS:
+  Engine Coolant 50/50, Thermostat Assembly, Water Pump Gasket
+
+ESTIMATED SERVICE DOWNTIME : 3.5 Hours
+================================================================================
+
+================================================================================
+ AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
+================================================================================
+VEHICLE IDENTIFIER      : VH-1037 (2021 Freightliner Cascadia)
+TIMESTAMP GENERATED     : 2026-10-13 14:51:29
+HEALTH RISK STATUS      : CRITICAL (Risk Index: 72.0%)
+PRIMARY FAULT DETECTED  : BRAKE OVERHEAT
+SUBSYSTEM CLASSIFICATION: Chassis / Braking & Friction
+--------------------------------------------------------------------------------
+TELEMETRIC SENSOR AUDIT:
+  - Odometer Reading    : 64159.05 km (Engine Hours: 1632.28 h)
+  - Vehicle Speed       : 56.64 km/h | Engine RPM: 2576.4
+  - Engine Temperature  : 99.28 deg C (Coolant: 95.19 deg C)
+  - Oil Pressure        : 57.26 PSI | Vibration: 1.781
+  - Brake Pad Thickness : 9.88 mm | Brake Temp: 281.43 deg C
+  - Battery Voltage     : 13.09 V | Alternator: 13.96 V
+  - Battery SOH         : 98.38%
+  - GPS Location        : Lat 32.680239, Lon -96.906675
+--------------------------------------------------------------------------------
+PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
+  - Failure Probability : 72.00%
+  - Subsystem Breakdown : Engine=0.4%, Brake=72.0%, Battery=0.1%
+  - Physical Alerts     : Brake Thermal Spike (281.4 deg C)
+--------------------------------------------------------------------------------
+RECOMMENDED WORKSHOP ACTION:
+  Severe brake rotor thermal surge detected (>240 deg C). Inspect caliper sliding pins for seizure, check brake hose restriction, replace glazed friction pads and warped brake discs.
+
+REQUIRED REPLACEMENT PARTS:
+  Vented Brake Rotors (Pair), Heavy-Duty Brake Caliper Assembly, High-Temp Ceramic Brake Pads, DOT-4 Synthetic Brake Fluid
+
+ESTIMATED SERVICE DOWNTIME : 3.0 Hours
+================================================================================
+
+================================================================================
+ AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
+================================================================================
+VEHICLE IDENTIFIER      : VH-1003 (2022 BMW i4)
+TIMESTAMP GENERATED     : 2026-10-13 14:51:49
+HEALTH RISK STATUS      : CRITICAL (Risk Index: 98.0%)
+PRIMARY FAULT DETECTED  : BATTERY DEGRADED
+SUBSYSTEM CLASSIFICATION: Electrical / Energy Storage
+--------------------------------------------------------------------------------
+TELEMETRIC SENSOR AUDIT:
+  - Odometer Reading    : 82698.04 km (Engine Hours: 2158.35 h)
+  - Vehicle Speed       : 47.47 km/h | Engine RPM: 2538.5
+  - Engine Temperature  : 96.93 deg C (Coolant: 91.73 deg C)
+  - Oil Pressure        : 54.02 PSI | Vibration: 1.479
+  - Brake Pad Thickness : 10.06 mm | Brake Temp: 69.53 deg C
+  - Battery Voltage     : 10.78 V | Alternator: 13.5 V
+  - Battery SOH         : 39.98%
+  - GPS Location        : Lat 37.737208, Lon -122.430023
+--------------------------------------------------------------------------------
+PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
+  - Failure Probability : 98.00%
+  - Subsystem Breakdown : Engine=0.1%, Brake=0.8%, Battery=98.0%
+  - Physical Alerts     : Critically Low Battery Voltage (10.78V), Battery SOH Severely Degraded (40.0%)
+--------------------------------------------------------------------------------
+RECOMMENDED WORKSHOP ACTION:
+  Battery State-of-Health (SOH) dropped below operating safety margin. Perform 12V conductance battery test, clean terminal corrosion, replace 12V AGM auxiliary/starter battery.
+
+REQUIRED REPLACEMENT PARTS:
+  12V 80Ah AGM Battery, Terminal Anti-Corrosion Spray
+
+ESTIMATED SERVICE DOWNTIME : 0.8 Hours
+================================================================================
+
+================================================================================
+ AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
+================================================================================
+VEHICLE IDENTIFIER      : VH-1011 (2024 Ford F-150)
+TIMESTAMP GENERATED     : 2026-10-13 14:51:49
+HEALTH RISK STATUS      : HEALTHY (Risk Index: 1.7%)
+PRIMARY FAULT DETECTED  : HEALTHY
+SUBSYSTEM CLASSIFICATION: General Inspection
+--------------------------------------------------------------------------------
+TELEMETRIC SENSOR AUDIT:
+  - Odometer Reading    : 16756.07 km (Engine Hours: 349.21 h)
+  - Vehicle Speed       : 80.87 km/h | Engine RPM: 3551.7
+  - Engine Temperature  : 95.6 deg C (Coolant: 90.31 deg C)
+  - Oil Pressure        : 64.59 PSI | Vibration: 1.87
+  - Brake Pad Thickness : 7.88 mm | Brake Temp: 66.02 deg C
+  - Battery Voltage     : 12.93 V | Alternator: 14.08 V
+  - Battery SOH         : 91.55%
+  - GPS Location        : Lat 42.013413, Lon -87.634308
+--------------------------------------------------------------------------------
+PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
+  - Failure Probability : 1.67%
+  - Subsystem Breakdown : Engine=0.1%, Brake=1.7%, Battery=0.1%
+--------------------------------------------------------------------------------
+RECOMMENDED WORKSHOP ACTION:
+  All subsystems operating within nominal OEM tolerances. Continue routine scheduled maintenance interval.
+
+REQUIRED REPLACEMENT PARTS:
+  None
+
+ESTIMATED SERVICE DOWNTIME : 0.0 Hours
+================================================================================

@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "missing_data_policy": {
+    "policy_description": "Defines strict validation rules for required telematics fields versus documented domain-calibrated default baselines for non-critical secondary sensors.",
+    "core_mandatory_fields": [
+      "engine_temp_c",
+      "oil_pressure_psi",
+      "brake_pad_wear_mm",
+      "battery_voltage_v"
+    ],
+    "policy_action_on_missing_core": "REJECT - Mark record as DATA_ERROR, set ml_status to INVALID_INPUT, and do not synthesize artificial values.",
+    "policy_action_on_missing_secondary": "IMPUTE - Impute with documented SAE/OEM nominal steady-state baseline and record in data quality audit report."
+  },
+  "nominal_baselines": {
+    "odometer_km": {"value": 50000.0, "justification": "Fleet mid-lifecycle average baseline"},
+    "engine_hours": {"value": 1500.0, "justification": "Proportional to 50,000 km at ~33 km/h commercial average"},
+    "vehicle_speed_kph": {"value": 0.0, "justification": "Conservative stationary baseline"},
+    "engine_rpm": {"value": 800.0, "justification": "Standard automotive idle speed (750-850 RPM)"},
+    "coolant_temp_c": {"value": 86.0, "justification": "OEM closed-loop thermostat regulated operating temperature"},
+    "fuel_level_percent": {"value": 60.0, "justification": "Nominal operational tank capacity"},
+    "fuel_consumption_lph": {"value": 3.0, "justification": "Standard idle fuel consumption rate"},
+    "engine_load_percent": {"value": 15.0, "justification": "Parasitic accessory idle engine load"},
+    "throttle_position_percent": {"value": 10.0, "justification": "Throttle plate curb-idle angle"},
+    "air_flow_rate_gps": {"value": 15.0, "justification": "Nominal mass airflow at engine idle"},
+    "exhaust_gas_temp_c": {"value": 450.0, "justification": "Steady-state catalyst / manifold operating temperature"},
+    "engine_vibration": {"value": 1.0, "justification": "ISO 10816 Class I smooth machinery threshold (1.0 mm/s)"},
+    "brake_fluid_level": {"value": 90.0, "justification": "Normal master cylinder reservoir fill level"},
+    "brake_temp_c": {"value": 75.0, "justification": "Ambient friction residual temperature"},
+    "abs_fault_indicator": {"value": 0, "justification": "Normal inactive ABS status"},
+    "brake_pedal_position": {"value": 0.0, "justification": "Disengaged brake pedal position"},
+    "wheel_speed_fl_kph": {"value": 0.0, "justification": "Stationary wheel baseline"},
+    "wheel_speed_fr_kph": {"value": 0.0, "justification": "Stationary wheel baseline"},
+    "wheel_speed_rl_kph": {"value": 0.0, "justification": "Stationary wheel baseline"},
+    "wheel_speed_rr_kph": {"value": 0.0, "justification": "Stationary wheel baseline"},
+    "battery_current_a": {"value": 0.0, "justification": "Balanced electrical load at equilibrium"},
+    "battery_temp_c": {"value": 30.0, "justification": "Under-hood ambient thermal operating equilibrium"},
+    "alternator_output_v": {"value": 14.1, "justification": "Standard 13.8V-14.4V alternator charging voltage"},
+    "battery_charge_percent": {"value": 90.0, "justification": "Fully maintained float charge state"},
+    "battery_health_percent": {"value": 95.0, "justification": "Nominal battery state-of-health"},
+    "ambient_temp_c": {"value": 22.0, "justification": "Standard ISO 20-25C reference temperature"},
+    "gps_latitude": {"value": 37.77, "justification": "Default San Francisco Hub coordinate"},
+    "gps_longitude": {"value": -122.42, "justification": "Default San Francisco Hub coordinate"}
+  }
+}
