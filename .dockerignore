@@ -1,0 +1,56 @@
+# ====================================================================
+# .dockerignore - Connected Vehicle Analytics Container Build Exclusions
+# ====================================================================
+
+# Git repository & history
+.git
+.gitignore
+
+# Python bytecode, environments, and caching
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Secrets, private keys, environment configs
+.env
+.env.*
+*.pem
+*.key
+
+# IDE configs, OS files, and system generated agent directories
+.vscode/
+.idea/
+.gemini/
+*.log
+.DS_Store
+Thumbs.db
+
+# Jupyter / Databricks notebooks checkpoints and MLflow tracking logs
+.ipynb_checkpoints/
+mlruns/
+.mlflow/
+mlflow.db
+
+# Transient simulated live stream drops (keep directory structure, don't bundle stale pings)
+data/landing/stream_*.json

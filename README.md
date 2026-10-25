@@ -46,8 +46,9 @@ An end-to-end Big Data Analytics (BDA) platform for real-time connected vehicle 
 ### Prerequisites
 - Python 3.10+ (tested on Python 3.10 & 3.11 on Windows, macOS, Linux)
 - Git & Git LFS (for large model binary checkouts)
+- *(Optional for Docker deployment)*: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/) with WSL 2 backend enabled
 
-### Setup Instructions
+### Setup Instructions (Local Python Environment)
 ```bash
 # 1. Clone repository and navigate to project root
 cd d:/project
@@ -65,7 +66,107 @@ pip install -r requirements.txt
 
 ---
 
-## 3. Startup & Application Commands
+## 3. Docker Containerization & Portability Guide
+
+The project is fully containerized with a production-grade [`Dockerfile`](file:///d:/project/Dockerfile), [`docker-compose.yml`](file:///d:/project/docker-compose.yml), and [`.dockerignore`](file:///d:/project/.dockerignore). All ML models, 50-vehicle threshold profiles, preprocessors, and Streamlit assets are packaged self-contained.
+
+### A. Windows Setup & Prerequisites
+1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/setup/install/windows-install/).
+2. Enable the **WSL 2 backend** in Docker Desktop settings:
+   - Go to `Settings > General > Use the WSL 2 based engine`.
+   - Go to `Settings > Resources > WSL Integration` and toggle your default distro.
+3. Start Docker Desktop and verify the daemon is running in PowerShell:
+   ```powershell
+   docker --version
+   docker compose version
+   ```
+
+### B. Build and Run with Docker Compose (Recommended)
+```powershell
+# 1. Navigate to project root
+cd d:/project
+
+# 2. Build and launch the container in detached mode
+docker compose up --build -d
+
+# 3. Check container status and automated health check
+docker compose ps
+
+# 4. View live application logs
+docker compose logs -f
+```
+
+### C. Build and Run with Standalone Docker CLI
+```powershell
+# 1. Build the Docker image
+docker build -t connected-vehicle-analytics:latest .
+
+# 2. Run container with port forwarding and volumes for stream simulation
+docker run -d `
+  --name connected_vehicle_analytics `
+  -p 8501:8501 `
+  -v ${PWD}/data/landing:/app/data/landing `
+  -v ${PWD}/reports:/app/reports `
+  --restart unless-stopped `
+  connected-vehicle-analytics:latest
+
+# 3. Inspect container health
+docker inspect --format='{{json .State.Health.Status}}' connected_vehicle_analytics
+```
+
+### D. Access the Dashboard
+- Open your browser at: **`http://localhost:8501`**
+- Streamlit Health Check URL: **`http://localhost:8501/_stcore/health`** (returns `ok` with HTTP 200).
+
+### E. Run Test Suites Inside Container
+Run any of the verification suites directly inside the running container environment:
+```powershell
+# Verify all 50 vehicle threshold configurations inside container
+docker exec -it connected_vehicle_analytics python verify_vehicle_configurations.py
+
+# Run comprehensive regression tests (Phases A, B, C, D) inside container
+docker exec -it connected_vehicle_analytics python verify_all_phases.py
+```
+
+### F. Shutdown & Teardown Commands
+```powershell
+# Stop and remove containers created by Docker Compose
+docker compose down
+
+# To also clean up container images
+docker compose down --rmi local
+
+# If using standalone Docker CLI:
+docker stop connected_vehicle_analytics
+docker rm connected_vehicle_analytics
+```
+
+### G. External Services Architecture (Kafka & Spark Clarification)
+- **Standalone Runtime Requirement**: **Neither Kafka nor Spark is required** to run the prediction pipeline or the Streamlit fleet dashboard.
+  - The real-time vehicle streaming simulation (`data_generator/simulator.py` and `dashboard/data_loader.py`) operates via local streaming micro-batches (`data/landing/`).
+  - ML inference (XGBoost, Random Forest, Logistic Regression), PCA dimensionality reduction, and dynamic 12V/24V threshold rules run natively inside the Python container.
+- **Cloud Lakehouse Notebooks**:
+  - The PySpark scripts located in `notebooks/` (`00_setup_and_data_init.py` through `05_ai_maintenance_reports.py`) are designed for cloud lakehouse environments (e.g., Databricks Medallion Architecture).
+  - They do not need to be deployed as local container services unless cloud delta lake simulation is desired.
+
+### H. Troubleshooting Docker on Windows
+- **Port 8501 Already in Use**:
+  - Check which process holds port 8501: `netstat -ano | findstr 8501`
+  - Or map to a different host port in `docker-compose.yml` (e.g., `"8502:8501"`).
+- **Docker Daemon Not Detected (`error during connect`)**:
+  - Ensure Docker Desktop application is running and the whale icon is visible in the Windows system tray.
+  - Run `Restart-Service *docker*` in administrative PowerShell if needed.
+- **Memory / Resource Allocation**:
+  - If building on a machine with limited RAM, create a `.wslconfig` file in `C:\Users\<YourUser>\.wslconfig`:
+    ```ini
+    [wsl2]
+    memory=4GB
+    processors=4
+    ```
+
+---
+
+## 4. Startup & Application Commands (Local Non-Docker)
 
 ### A. Launch Live Streamlit Fleet Monitoring Dashboard
 ```bash
@@ -115,7 +216,7 @@ python reports/report_generator.py
 
 ---
 
-## 4. Vehicle Configuration & Threshold Architecture
+## 5. Vehicle Configuration & Threshold Architecture
 
 ### A. Supported Profiles & Specifications
 The platform defines 4 standard threshold profiles in [`config/vehicle_thresholds.json`](file:///d:/project/config/vehicle_thresholds.json):
@@ -154,7 +255,7 @@ The platform enforces physical comparison rules across all predictors and evalua
 
 ---
 
-## 5. Verified Test Results
+## 6. Verified Test Results
 
 All verification suites have been executed and validated:
 
@@ -167,7 +268,7 @@ All verification suites have been executed and validated:
 
 ---
 
-## 6. Telematics Data Design (34 Columns)
+## 7. Telematics Data Design (34 Columns)
 
 | Subsystem | Column Count | Features |
 |---|:---:|---|
@@ -179,10 +280,14 @@ All verification suites have been executed and validated:
 
 ---
 
-## 7. Project Structure
+## 8. Project Structure
 
 ```
 d:/project/
+├── Dockerfile                                 # Multi-stage production container specification
+├── docker-compose.yml                         # Docker Compose service definition & healthcheck
+├── .dockerignore                              # Build ignore rules (excludes caches, secrets, bytecode)
+
 ├── config/
 │   ├── safety_thresholds.json                 # Engineering limits and baseline safety rules
 │   └── vehicle_thresholds.json                # Profiles A-D & 50 vehicle threshold configurations

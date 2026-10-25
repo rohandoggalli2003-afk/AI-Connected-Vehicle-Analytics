@@ -111,6 +111,13 @@ class UnifiedVehiclePredictor:
     with per-vehicle live causal rolling window cache, data quality validation, and safety net overrides.
     """
     def __init__(self, models_dir: str = "models", config_dir: str = "config"):
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        if not os.path.isabs(models_dir):
+            if not os.path.exists(models_dir) and os.path.exists(os.path.join(base_dir, models_dir)):
+                models_dir = os.path.join(base_dir, models_dir)
+        if not os.path.isabs(config_dir):
+            if not os.path.exists(config_dir) and os.path.exists(os.path.join(base_dir, config_dir)):
+                config_dir = os.path.join(base_dir, config_dir)
         self.models_dir = models_dir
         self.config_dir = config_dir
         self.scaler = None
