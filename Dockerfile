@@ -33,9 +33,12 @@ COPY ml_pipeline/ ml_pipeline/
 COPY models/ models/
 COPY reports/ reports/
 COPY dashboard/ dashboard/
+COPY notebooks/ notebooks/
 COPY verify_vehicle_configurations.py .
 COPY verify_all_phases.py .
 COPY verify_phase_a.py .
+COPY mlruns/ mlruns/
+COPY mlflow.db .
 
 # Ensure required runtime directories exist inside container
 RUN mkdir -p data/landing reports

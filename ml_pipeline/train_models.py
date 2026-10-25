@@ -760,17 +760,36 @@ def verify_mlflow_registry_and_reproducibility(models_dir: str = "models") -> bo
             continue
 
         # Load from MLflow Model Registry
+        mlflow_model = None
+        versions = client.get_latest_versions(reg_name)
+        latest_v = versions[0].version if versions else 1
+        model_uri = f"models:/{reg_name}/{latest_v}"
         try:
-            versions = client.get_latest_versions(reg_name)
-            latest_v = versions[0].version if versions else 1
-            model_uri = f"models:/{reg_name}/{latest_v}"
             mlflow_model = mlflow.sklearn.load_model(model_uri)
             print(f" [+] Successfully loaded registered model: '{model_uri}'")
         except Exception as e:
+            # Cross-platform fallback: if absolute DB URI differs between host OS and container (e.g. Windows D: vs Linux /app)
             try:
-                model_uri = f"models:/{reg_name}/latest"
-                mlflow_model = mlflow.sklearn.load_model(model_uri)
-                print(f" [+] Successfully loaded registered model: '{model_uri}'")
+                v_obj = versions[0] if versions else None
+                if v_obj and v_obj.source:
+                    source_id = v_obj.source.replace("models:/", "").strip("/")
+                    # Search for model artifacts in mlruns
+                    for root, dirs, files in os.walk("mlruns"):
+                        if source_id in root and ("model.pkl" in files or "model.skops" in files or "MLmodel" in files):
+                            mlflow_model = mlflow.sklearn.load_model(root)
+                            print(f" [+] Successfully loaded registered model from relative artifact: '{root}'")
+                            break
+                if mlflow_model is None:
+                    # Search by run_id
+                    run_id = getattr(v_obj, "run_id", "")
+                    if run_id:
+                        for root, dirs, files in os.walk("mlruns"):
+                            if run_id in root and ("model.pkl" in files or "model.skops" in files or "MLmodel" in files):
+                                mlflow_model = mlflow.sklearn.load_model(root)
+                                print(f" [+] Successfully loaded registered model from relative run artifact: '{root}'")
+                                break
+                if mlflow_model is None:
+                    raise e
             except Exception as e2:
                 print(f" [FAIL] Could not load registered model '{reg_name}': {e2}")
                 all_matched = False

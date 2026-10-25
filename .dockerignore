@@ -46,11 +46,9 @@ wheels/
 .DS_Store
 Thumbs.db
 
-# Jupyter / Databricks notebooks checkpoints and MLflow tracking logs
+# Jupyter / Databricks notebooks checkpoints
 .ipynb_checkpoints/
-mlruns/
 .mlflow/
-mlflow.db
 
 # Transient simulated live stream drops (keep directory structure, don't bundle stale pings)
 data/landing/stream_*.json
