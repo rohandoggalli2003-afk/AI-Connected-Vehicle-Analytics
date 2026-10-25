@@ -54,28 +54,25 @@ Deduplication + Boundary Clipping ➔ Silver Delta (Enriched with Vehicle Master
 
 ---
 
-### Slide 6: Machine Learning Pipeline (Phase B)
-- **Anti-Leakage Rigor**: Chronological 80/20 train/test split. All outlier percentile clipping (1st/99th), `StandardScaler`, and `PCA` fitted strictly on train.
-- **Dimensionality Reduction**: PCA retained **95.89% variance** (reduced 38 features to 18 components).
-- **Class Imbalance**: Managed via cost-sensitive learning (`class_weight='balanced'`, `scale_pos_weight`).
+### Slide 6: Machine Learning Pipeline & Causal Data Cleaning (Phase B)
+- **Missing Sensor Imputation**: Trained on `historical_telematics_with_missing_values.csv` (48,006 missing cells). Causal vehicle-wise rolling median imputation (past 3 readings) eliminates lookahead leakage.
+- **Anti-Leakage Rigor**: Chronological 3-way split (70% Train, 15% Val, 15% Test). Baseline medians, clipping bounds (1st/99th), `StandardScaler`, and `PCA` fitted strictly on Train.
+- **Physical Boundaries vs Failures**: Filters sensor glitches while preserving genuine overheating and pad wear failure signatures.
+- **Dimensionality Reduction**: PCA retained **95.51% variance** (20 orthogonal components).
 - **Priority Metric**: **RECALL is prioritized over precision** — missing an imminent failure (False Negative) leads to a highway breakdown; a False Positive is merely a 30-minute shop inspection.
 
 ---
 
-### Slide 7: Model Evaluation & Benchmark Comparison
-*Evaluated across Engine, Brake, and Battery Subsystems:*
+### Slide 7: Model Evaluation & Benchmark Comparison (Retrained on Missing Values Data)
+*Evaluated on untouched held-out test partition:*
 
-| Target | Model | Features | Precision | Recall (Priority) | F1-Score | ROC-AUC |
-|---|---|---|---|---|---|---|
-| **Engine** | **Logistic Regression** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** |
-| Engine | Random Forest | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| Engine | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
-| **Brake** | **Logistic Regression** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** |
-| Brake | XGBoost | PCA (95% Var) | 1.0000 | 0.9929 | 0.9964 | 1.0000 |
-| **Battery** | **Logistic Regression** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** |
-| Battery | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| Target | Champion Model | Features | Precision | Recall (Priority) | F1-Score | ROC-AUC | Brier Score |
+|---|---|---|---|---|---|---|---|
+| **Engine** | **Logistic Regression** | **Original Scaled** | **1.0000** | **0.9944** | **0.9972** | **1.0000** | **0.0001** |
+| **Brake** | **Random Forest** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | **0.0012** |
+| **Battery** | **Random Forest** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | **0.0002** |
 
-*All champion models logged and registered in the **MLflow Model Registry**.*  
+*All champion models logged and registered in the persistent **MLflow Model Registry**.*  
 - **Independent Validation on Unseen Fleet (11 held-out vehicles, 4,400 records)**:
   - Strict target leakage audit PASSED (zero proxy columns).
   - Unseen Fleet Generalization: **100% Recall** maintained across Engine (90.8% Prec), Brake (96.4% Prec), and Battery (92.9% Prec).

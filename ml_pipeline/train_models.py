@@ -40,6 +40,11 @@ from sklearn.metrics import (
     average_precision_score, confusion_matrix, brier_score_loss
 )
 
+try:
+    from ml_pipeline.data_cleaner import clean_batch_causal, ALL_TELEMETRY_SENSORS
+except ImportError:
+    from data_cleaner import clean_batch_causal, ALL_TELEMETRY_SENSORS
+
 # Optional XGBoost import with graceful fallback
 try:
     import xgboost as xgb
@@ -71,7 +76,7 @@ logger = logging.getLogger("TrainModels")
 
 
 def run_ml_training(
-    data_path: str = "data/historical_labeled_telematics.parquet",
+    data_path: str = "data/historical_telematics_with_missing_values.csv",
     models_dir: str = "models",
     use_mlflow: bool = True
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
@@ -82,6 +87,13 @@ def run_ml_training(
 
     # 1. Load Data
     print(f"[*] Step 1: Loading dataset from: {data_path}")
+    if not os.path.exists(data_path):
+        fallback_path = "data/historical_labeled_telematics.parquet"
+        if not os.path.exists(fallback_path):
+            fallback_path = "data/historical_labeled_telematics.csv"
+        print(f"    [!] Requested {data_path} not found. Falling back to {fallback_path}")
+        data_path = fallback_path
+
     if data_path.endswith(".parquet"):
         df_raw = pd.read_parquet(data_path)
     else:
@@ -89,14 +101,67 @@ def run_ml_training(
     print(f"    Raw records loaded: {len(df_raw)} rows, {len(df_raw.columns)} columns")
 
     # 2. Clean & Deduplicate
-    print("\n[*] Step 2: Data Cleaning & Deduplication...")
+    print("\n[*] Step 2: Data Deduplication & Timestamp Sorting...")
     df_clean = df_raw.drop_duplicates(subset=["vehicle_id", "timestamp"]).copy()
+    df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"])
+    df_clean = df_clean.sort_values(by="timestamp").reset_index(drop=True)
     print(f"    Deduplication: {len(df_raw)} -> {len(df_clean)} records")
 
-    # 3. Rolling Feature Engineering per vehicle
-    print("\n[*] Step 3: Rolling Feature Engineering per vehicle (5-ping window)...")
-    df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"])
-    df_clean = df_clean.sort_values(by=["vehicle_id", "timestamp"]).reset_index(drop=True)
+    # 3. 3-Way Chronological Split BEFORE Fitting Imputation or Scalers
+    print("\n[*] Step 3: Chronological 3-Way Split (70% Train, 15% Validation, 15% Test)...")
+    n_total = len(df_clean)
+    idx_train = int(n_total * 0.70)
+    idx_val   = int(n_total * 0.85)
+
+    df_train_raw = df_clean.iloc[:idx_train].copy()
+    df_val_raw   = df_clean.iloc[idx_train:idx_val].copy()
+    df_test_raw  = df_clean.iloc[idx_val:].copy()
+
+    # Pre-cleaning missing value check
+    sensor_cols = [c for c in ALL_TELEMETRY_SENSORS if c in df_clean.columns]
+    nulls_train_before = int(df_train_raw[sensor_cols].isnull().sum().sum())
+    nulls_val_before   = int(df_val_raw[sensor_cols].isnull().sum().sum())
+    nulls_test_before  = int(df_test_raw[sensor_cols].isnull().sum().sum())
+    print(f"    Missing sensor values BEFORE cleaning:")
+    print(f"      Train: {nulls_train_before:,} | Val: {nulls_val_before:,} | Test: {nulls_test_before:,}")
+
+    # 4. Fit Baseline Imputation Statistics STRICTLY on Train partition
+    print("\n[*] Step 4: Fitting Baseline Imputation Medians (Train ONLY)...")
+    train_medians = df_train_raw[sensor_cols].median().to_dict()
+    joblib.dump(train_medians, os.path.join(models_dir, "train_medians.joblib"))
+
+    # Causal vehicle-wise cleaning on Train, Val, and Test
+    print("    Applying causal vehicle-wise rolling median imputation & physical boundary masking...")
+    df_train_clean, train_stats = clean_batch_causal(df_train_raw, sensor_cols=sensor_cols, window=3, train_medians=train_medians)
+    df_val_clean, val_stats     = clean_batch_causal(df_val_raw, sensor_cols=sensor_cols, window=3, train_medians=train_medians)
+    df_test_clean, test_stats   = clean_batch_causal(df_test_raw, sensor_cols=sensor_cols, window=3, train_medians=train_medians)
+
+    nulls_train_after = int(df_train_clean[sensor_cols].isnull().sum().sum())
+    nulls_val_after   = int(df_val_clean[sensor_cols].isnull().sum().sum())
+    nulls_test_after  = int(df_test_clean[sensor_cols].isnull().sum().sum())
+    print(f"    Missing sensor values AFTER causal cleaning:")
+    print(f"      Train: {nulls_train_after} (Imputed: {train_stats['total_imputed_history']:,} from history, {train_stats['total_imputed_fallback']} baseline)")
+    print(f"      Val  : {nulls_val_after} (Imputed: {val_stats['total_imputed_history']:,} from history, {val_stats['total_imputed_fallback']} baseline)")
+    print(f"      Test : {nulls_test_after} (Imputed: {test_stats['total_imputed_history']:,} from history, {test_stats['total_imputed_fallback']} baseline)")
+
+    # 5. Rolling Feature Engineering (strictly on cleaned sensor series)
+    print("\n[*] Step 5: Rolling Feature Engineering (5-ping window on cleaned data)...")
+    def add_rolling_features(df_part):
+        p = df_part.sort_values(by=["vehicle_id", "timestamp"]).copy()
+        p["rolling_engine_temp_mean"] = p.groupby("vehicle_id")["engine_temp_c"].transform(lambda x: x.rolling(5, min_periods=1).mean())
+        p["rolling_engine_temp_std"]  = p.groupby("vehicle_id")["engine_temp_c"].transform(lambda x: x.rolling(5, min_periods=1).std()).fillna(0)
+        p["rolling_oil_pressure_min"] = p.groupby("vehicle_id")["oil_pressure_psi"].transform(lambda x: x.rolling(5, min_periods=1).min())
+        p["rolling_brake_temp_max"]   = p.groupby("vehicle_id")["brake_temp_c"].transform(lambda x: x.rolling(5, min_periods=1).max())
+        p["rolling_battery_v_min"]    = p.groupby("vehicle_id")["battery_voltage_v"].transform(lambda x: x.rolling(5, min_periods=1).min())
+        p["wheel_speed_delta"]        = (p["wheel_speed_fl_kph"] - p["wheel_speed_fr_kph"]).abs()
+        return p.sort_values(by="timestamp").reset_index(drop=True)
+
+    df_train = add_rolling_features(df_train_clean)
+    df_val   = add_rolling_features(df_val_clean)
+    df_test  = add_rolling_features(df_test_clean)
+
+    # Reconstruct whole df_features for independent validation
+    df_features = pd.concat([df_train, df_val, df_test], axis=0).sort_values(by=["vehicle_id", "timestamp"]).reset_index(drop=True)
 
     ENGINE_COLS = [
         "odometer_km", "engine_hours", "vehicle_speed_kph", "engine_temp_c",
@@ -116,34 +181,12 @@ def run_ml_training(
     ENV_COLS = ["ambient_temp_c", "gps_latitude", "gps_longitude"]
 
     BASE_FEATURES = ENGINE_COLS + BRAKE_COLS + BATTERY_COLS + ENV_COLS
-
-    df_features = df_clean.copy()
-    df_features["rolling_engine_temp_mean"] = df_features.groupby("vehicle_id")["engine_temp_c"].transform(lambda x: x.rolling(5, min_periods=1).mean())
-    df_features["rolling_engine_temp_std"]  = df_features.groupby("vehicle_id")["engine_temp_c"].transform(lambda x: x.rolling(5, min_periods=1).std()).fillna(0)
-    df_features["rolling_oil_pressure_min"] = df_features.groupby("vehicle_id")["oil_pressure_psi"].transform(lambda x: x.rolling(5, min_periods=1).min())
-    df_features["rolling_brake_temp_max"]   = df_features.groupby("vehicle_id")["brake_temp_c"].transform(lambda x: x.rolling(5, min_periods=1).max())
-    df_features["rolling_battery_v_min"]    = df_features.groupby("vehicle_id")["battery_voltage_v"].transform(lambda x: x.rolling(5, min_periods=1).min())
-    df_features["wheel_speed_delta"]        = (df_features["wheel_speed_fl_kph"] - df_features["wheel_speed_fr_kph"]).abs()
-
     ALL_FEATURES = BASE_FEATURES + [
         "rolling_engine_temp_mean", "rolling_engine_temp_std",
         "rolling_oil_pressure_min", "rolling_brake_temp_max",
         "rolling_battery_v_min", "wheel_speed_delta"
     ]
-    print(f"    Total engineered input features: {len(ALL_FEATURES)}")
-
-    # Sort chronologically across entire fleet
-    df_features = df_features.sort_values(by="timestamp").reset_index(drop=True)
-
-    # 4. 3-Way Chronological Split: 70% Train, 15% Validation, 15% Test
-    print("\n[*] Step 4: 3-Way Chronological Split (70% Train, 15% Validation, 15% Test)...")
-    n_total = len(df_features)
-    idx_train = int(n_total * 0.70)
-    idx_val   = int(n_total * 0.85)
-
-    df_train = df_features.iloc[:idx_train].copy()
-    df_val   = df_features.iloc[idx_train:idx_val].copy()
-    df_test  = df_features.iloc[idx_val:].copy()
+    print(f"    Total engineered input features: {len(ALL_FEATURES)} (zero quality-leakage columns)")
 
     X_train_raw = df_train[ALL_FEATURES]
     X_val_raw   = df_val[ALL_FEATURES]
@@ -158,8 +201,8 @@ def run_ml_training(
     for tgt in targets:
         print(f"      {tgt}: Train={y_train[tgt].sum()} ({y_train[tgt].mean()*100:.1f}%), Val={y_val[tgt].sum()} ({y_val[tgt].mean()*100:.1f}%), Test={y_test[tgt].sum()} ({y_test[tgt].mean()*100:.1f}%)")
 
-    # 5. Outlier Percentile Clipping (fitted strictly on Train)
-    print("\n[*] Step 5: Outlier Handling via 1st & 99th Percentile Clipping (Train ONLY)...")
+    # 6. Outlier Percentile Clipping (fitted strictly on Train)
+    print("\n[*] Step 6: Outlier Handling via 1st & 99th Percentile Clipping (Train ONLY)...")
     q01 = X_train_raw.quantile(0.01)
     q99 = X_train_raw.quantile(0.99)
     X_train_clipped = X_train_raw.clip(lower=q01, upper=q99, axis=1)
@@ -170,16 +213,16 @@ def run_ml_training(
     joblib.dump(clipping_bounds, os.path.join(models_dir, "clipping_bounds.joblib"))
     joblib.dump(ALL_FEATURES, os.path.join(models_dir, "feature_names.joblib"))
 
-    # 6. StandardScaler (fitted strictly on Train)
-    print("\n[*] Step 6: Feature Scaling (StandardScaler fitted strictly on Train)...")
+    # 7. StandardScaler (fitted strictly on Train)
+    print("\n[*] Step 7: Feature Scaling (StandardScaler fitted strictly on Train)...")
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train_clipped)
     X_val_scaled   = scaler.transform(X_val_clipped)
     X_test_scaled  = scaler.transform(X_test_clipped)
     joblib.dump(scaler, os.path.join(models_dir, "scaler.joblib"))
 
-    # 7. PCA: 95% Explained Variance (fitted strictly on Train)
-    print("\n[*] Step 7: Principal Component Analysis (PCA ~95% variance on Train)...")
+    # 8. PCA: 95% Explained Variance (fitted strictly on Train)
+    print("\n[*] Step 8: Principal Component Analysis (PCA ~95% variance on Train)...")
     pca = PCA(n_components=0.95, random_state=42)
     X_train_pca = pca.fit_transform(X_train_scaled)
     X_val_pca   = pca.transform(X_val_scaled)

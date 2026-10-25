@@ -1,25 +1,29 @@
 ================================================================================
  AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
 ================================================================================
-VEHICLE IDENTIFIER      : VH-1002 (2019 Ford F-150)
-TIMESTAMP GENERATED     : 2026-10-13 14:51:49
-HEALTH RISK STATUS      : HEALTHY (Risk Index: 10.0%)
+VEHICLE IDENTIFIER      : VH-1008 (2021 Tesla Model 3)
+TIMESTAMP GENERATED     : 2026-10-23 06:42:18
+HEALTH RISK STATUS      : HEALTHY (Risk Index: <1%)
 PRIMARY FAULT DETECTED  : HEALTHY
 SUBSYSTEM CLASSIFICATION: General Inspection
 --------------------------------------------------------------------------------
 TELEMETRIC SENSOR AUDIT:
-  - Odometer Reading    : 178797.0 km (Engine Hours: 3999.83 h)
-  - Vehicle Speed       : 0.0 km/h | Engine RPM: 888.3
-  - Engine Temperature  : 88.39 deg C (Coolant: 85.35 deg C)
-  - Oil Pressure        : 47.63 PSI | Vibration: 1.343
-  - Brake Pad Thickness : 10.58 mm | Brake Temp: 61.05 deg C
-  - Battery Voltage     : 14.07 V | Alternator: 13.61 V
-  - Battery SOH         : 83.68%
-  - GPS Location        : Lat 37.914943, Lon -122.469921
+  - Odometer Reading    : 94718.14 km (Engine Hours: 2553.43 h)
+  - Vehicle Speed       : 85.83 km/h | Engine RPM: 3604.9
+  - Engine Temperature  : 93.82 deg C (Coolant: 88.33 deg C)
+  - Oil Pressure        : 63.49 PSI | Vibration: 1.792
+  - Brake Pad Thickness : 10.36 mm | Brake Temp: 78.85 deg C
+  - Battery Voltage     : 13.8 V | Alternator: 14.47 V
+  - Battery SOH         : 91.92%
+  - GPS Location        : Lat 33.822253, Lon -84.376344
 --------------------------------------------------------------------------------
 PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
-  - Failure Probability : 10.00%
-  - Subsystem Breakdown : Engine=0.1%, Brake=10.0%, Battery=0.1%
+  - Failure Probability : <1%
+  - Subsystem Breakdown : Engine=0.1%, Brake=0.1%, Battery=0.1%
+--------------------------------------------------------------------------------
+SENSOR TELEMETRY DATA QUALITY AUDIT:
+  - Data Quality Rating : HIGH
+  - Sensor Integrity    : 100% CAN-Bus Direct Telemetry (Zero Imputations)
 --------------------------------------------------------------------------------
 RECOMMENDED WORKSHOP ACTION:
   All subsystems operating within nominal OEM tolerances. Continue routine scheduled maintenance interval.
@@ -34,25 +38,29 @@ ESTIMATED SERVICE DOWNTIME : 0.0 Hours
  AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
 ================================================================================
 VEHICLE IDENTIFIER      : VH-1001 (2018 BMW X5)
-TIMESTAMP GENERATED     : 2026-10-13 14:51:49
-HEALTH RISK STATUS      : CRITICAL (Risk Index: 99.8%)
+TIMESTAMP GENERATED     : 2026-10-23 06:42:18
+HEALTH RISK STATUS      : CRITICAL (Risk Index: 99.9%)
 PRIMARY FAULT DETECTED  : ENGINE OVERHEAT
 SUBSYSTEM CLASSIFICATION: Powertrain / Cooling
 --------------------------------------------------------------------------------
 TELEMETRIC SENSOR AUDIT:
-  - Odometer Reading    : 199248.06 km (Engine Hours: 4376.72 h)
-  - Vehicle Speed       : 72.3 km/h | Engine RPM: 3215.8
-  - Engine Temperature  : 122.2 deg C (Coolant: 115.61 deg C)
-  - Oil Pressure        : 55.37 PSI | Vibration: 2.962
-  - Brake Pad Thickness : 11.11 mm | Brake Temp: 236.62 deg C
-  - Battery Voltage     : 13.61 V | Alternator: 14.31 V
-  - Battery SOH         : 86.22%
-  - GPS Location        : Lat 41.97176, Lon -87.601247
+  - Odometer Reading    : 111556.66 km (Engine Hours: 2418.67 h)
+  - Vehicle Speed       : 9.29 km/h | Engine RPM: 1102.8
+  - Engine Temperature  : 106.18 deg C (Coolant: 102.02 deg C)
+  - Oil Pressure        : 46.31 PSI | Vibration: 2.867
+  - Brake Pad Thickness : 7.46 mm | Brake Temp: 75.16 deg C
+  - Battery Voltage     : 13.26 V | Alternator: 14.91 V
+  - Battery SOH         : 91.27%
+  - GPS Location        : Lat 41.800611, Lon -87.736881
 --------------------------------------------------------------------------------
 PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
-  - Failure Probability : 99.84%
-  - Subsystem Breakdown : Engine=99.8%, Brake=9.2%, Battery=0.1%
-  - Physical Alerts     : Engine Overheating (122.2 deg C)
+  - Failure Probability : 99.90%
+  - Subsystem Breakdown : Engine=99.9%, Brake=7.8%, Battery=0.1%
+  - Physical Alerts     : Engine Temperature Warning (106.2 deg C)
+--------------------------------------------------------------------------------
+SENSOR TELEMETRY DATA QUALITY AUDIT:
+  - Data Quality Rating : HIGH
+  - Sensor Integrity    : 100% CAN-Bus Direct Telemetry (Zero Imputations)
 --------------------------------------------------------------------------------
 RECOMMENDED WORKSHOP ACTION:
   Inspect radiator coolant flow, check water pump impeller, verify thermostat valve opening, and pressure-test cylinder head gasket.
@@ -66,59 +74,67 @@ ESTIMATED SERVICE DOWNTIME : 3.5 Hours
 ================================================================================
  AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
 ================================================================================
-VEHICLE IDENTIFIER      : VH-1037 (2021 Freightliner Cascadia)
-TIMESTAMP GENERATED     : 2026-10-13 14:51:29
-HEALTH RISK STATUS      : CRITICAL (Risk Index: 72.0%)
-PRIMARY FAULT DETECTED  : BRAKE OVERHEAT
-SUBSYSTEM CLASSIFICATION: Chassis / Braking & Friction
+VEHICLE IDENTIFIER      : VH-1002 (2019 Ford F-150)
+TIMESTAMP GENERATED     : 2026-10-23 06:42:18
+HEALTH RISK STATUS      : CRITICAL (Risk Index: 98.0%)
+PRIMARY FAULT DETECTED  : BRAKE PAD WORN
+SUBSYSTEM CLASSIFICATION: Chassis / Braking
 --------------------------------------------------------------------------------
 TELEMETRIC SENSOR AUDIT:
-  - Odometer Reading    : 64159.05 km (Engine Hours: 1632.28 h)
-  - Vehicle Speed       : 56.64 km/h | Engine RPM: 2576.4
-  - Engine Temperature  : 99.28 deg C (Coolant: 95.19 deg C)
-  - Oil Pressure        : 57.26 PSI | Vibration: 1.781
-  - Brake Pad Thickness : 9.88 mm | Brake Temp: 281.43 deg C
-  - Battery Voltage     : 13.09 V | Alternator: 13.96 V
-  - Battery SOH         : 98.38%
-  - GPS Location        : Lat 32.680239, Lon -96.906675
+  - Odometer Reading    : 93479.55 km (Engine Hours: 2152.97 h)
+  - Vehicle Speed       : 0.0 km/h | Engine RPM: 793.8
+  - Engine Temperature  : 90.93 deg C (Coolant: 87.9 deg C)
+  - Oil Pressure        : 43.0 PSI | Vibration: 0.976
+  - Brake Pad Thickness : 1.69 mm | Brake Temp: 168.92 deg C
+  - Battery Voltage     : 13.94 V | Alternator: 14.37 V
+  - Battery SOH         : 86.73%
+  - GPS Location        : Lat 37.839558, Lon -122.357459
 --------------------------------------------------------------------------------
 PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
-  - Failure Probability : 72.00%
-  - Subsystem Breakdown : Engine=0.4%, Brake=72.0%, Battery=0.1%
-  - Physical Alerts     : Brake Thermal Spike (281.4 deg C)
+  - Failure Probability : 98.00%
+  - Subsystem Breakdown : Engine=0.1%, Brake=98.0%, Battery=0.1%
+  - Physical Alerts     : Worn Brake Pads Critical (1.69 mm)
+--------------------------------------------------------------------------------
+SENSOR TELEMETRY DATA QUALITY AUDIT:
+  - Data Quality Rating : HIGH
+  - Sensor Integrity    : 100% CAN-Bus Direct Telemetry (Zero Imputations)
 --------------------------------------------------------------------------------
 RECOMMENDED WORKSHOP ACTION:
-  Severe brake rotor thermal surge detected (>240 deg C). Inspect caliper sliding pins for seizure, check brake hose restriction, replace glazed friction pads and warped brake discs.
+  Brake pad thickness below 3.0mm critical threshold. Replace front and rear friction pads, machine or replace brake rotors, bleed hydraulic fluid lines.
 
 REQUIRED REPLACEMENT PARTS:
-  Vented Brake Rotors (Pair), Heavy-Duty Brake Caliper Assembly, High-Temp Ceramic Brake Pads, DOT-4 Synthetic Brake Fluid
+  Ceramic Brake Pad Set, Vented Brake Rotors, DOT-4 Brake Fluid
 
-ESTIMATED SERVICE DOWNTIME : 3.0 Hours
+ESTIMATED SERVICE DOWNTIME : 2.0 Hours
 ================================================================================
 
 ================================================================================
  AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
 ================================================================================
 VEHICLE IDENTIFIER      : VH-1003 (2022 BMW i4)
-TIMESTAMP GENERATED     : 2026-10-13 14:51:49
+TIMESTAMP GENERATED     : 2026-10-23 06:42:18
 HEALTH RISK STATUS      : CRITICAL (Risk Index: 98.0%)
 PRIMARY FAULT DETECTED  : BATTERY DEGRADED
 SUBSYSTEM CLASSIFICATION: Electrical / Energy Storage
 --------------------------------------------------------------------------------
 TELEMETRIC SENSOR AUDIT:
-  - Odometer Reading    : 82698.04 km (Engine Hours: 2158.35 h)
-  - Vehicle Speed       : 47.47 km/h | Engine RPM: 2538.5
-  - Engine Temperature  : 96.93 deg C (Coolant: 91.73 deg C)
-  - Oil Pressure        : 54.02 PSI | Vibration: 1.479
-  - Brake Pad Thickness : 10.06 mm | Brake Temp: 69.53 deg C
-  - Battery Voltage     : 10.78 V | Alternator: 13.5 V
-  - Battery SOH         : 39.98%
-  - GPS Location        : Lat 37.737208, Lon -122.430023
+  - Odometer Reading    : 95036.0 km (Engine Hours: 2373.02 h)
+  - Vehicle Speed       : 0.0 km/h | Engine RPM: 733.0
+  - Engine Temperature  : 89.86 deg C (Coolant: 86.65 deg C)
+  - Oil Pressure        : 45.47 PSI | Vibration: 1.187
+  - Brake Pad Thickness : 10.8 mm | Brake Temp: 64.89 deg C
+  - Battery Voltage     : 10.97 V | Alternator: 14.52 V
+  - Battery SOH         : 34.96%
+  - GPS Location        : Lat 37.652724, Lon -122.540385
 --------------------------------------------------------------------------------
 PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
   - Failure Probability : 98.00%
-  - Subsystem Breakdown : Engine=0.1%, Brake=0.8%, Battery=98.0%
-  - Physical Alerts     : Critically Low Battery Voltage (10.78V), Battery SOH Severely Degraded (40.0%)
+  - Subsystem Breakdown : Engine=0.1%, Brake=0.1%, Battery=98.0%
+  - Physical Alerts     : Critically Low Battery Voltage (10.97V), Battery SOH Severely Degraded (35.0%)
+--------------------------------------------------------------------------------
+SENSOR TELEMETRY DATA QUALITY AUDIT:
+  - Data Quality Rating : HIGH
+  - Sensor Integrity    : 100% CAN-Bus Direct Telemetry (Zero Imputations)
 --------------------------------------------------------------------------------
 RECOMMENDED WORKSHOP ACTION:
   Battery State-of-Health (SOH) dropped below operating safety margin. Perform 12V conductance battery test, clean terminal corrosion, replace 12V AGM auxiliary/starter battery.
@@ -132,31 +148,35 @@ ESTIMATED SERVICE DOWNTIME : 0.8 Hours
 ================================================================================
  AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER 
 ================================================================================
-VEHICLE IDENTIFIER      : VH-1011 (2024 Ford F-150)
-TIMESTAMP GENERATED     : 2026-10-13 14:51:49
-HEALTH RISK STATUS      : HEALTHY (Risk Index: 1.7%)
-PRIMARY FAULT DETECTED  : HEALTHY
-SUBSYSTEM CLASSIFICATION: General Inspection
+VEHICLE IDENTIFIER      : VH-1004 (2018 Freightliner M2 106)
+TIMESTAMP GENERATED     : 2026-10-23 06:42:18
+HEALTH RISK STATUS      : WARNING (Risk Index: 42.4%)
+PRIMARY FAULT DETECTED  : LOW OIL PRESSURE
+SUBSYSTEM CLASSIFICATION: Powertrain / Lubrication
 --------------------------------------------------------------------------------
 TELEMETRIC SENSOR AUDIT:
-  - Odometer Reading    : 16756.07 km (Engine Hours: 349.21 h)
-  - Vehicle Speed       : 80.87 km/h | Engine RPM: 3551.7
-  - Engine Temperature  : 95.6 deg C (Coolant: 90.31 deg C)
-  - Oil Pressure        : 64.59 PSI | Vibration: 1.87
-  - Brake Pad Thickness : 7.88 mm | Brake Temp: 66.02 deg C
-  - Battery Voltage     : 12.93 V | Alternator: 14.08 V
-  - Battery SOH         : 91.55%
-  - GPS Location        : Lat 42.013413, Lon -87.634308
+  - Odometer Reading    : 125656.55 km (Engine Hours: 2903.31 h)
+  - Vehicle Speed       : 0.0 km/h | Engine RPM: 832.5
+  - Engine Temperature  : 98.7 deg C (Coolant: 94.64 deg C)
+  - Oil Pressure        : 46.31 PSI | Vibration: 1.686
+  - Brake Pad Thickness : 10.84 mm | Brake Temp: 124.64 deg C
+  - Battery Voltage     : 13.49 V | Alternator: 14.57 V
+  - Battery SOH         : 93.98%
+  - GPS Location        : Lat 37.875645, Lon -122.383058
 --------------------------------------------------------------------------------
 PREDICTIVE ML INFERENCE & SAFETY NET OVERRIDE:
-  - Failure Probability : 1.67%
-  - Subsystem Breakdown : Engine=0.1%, Brake=1.7%, Battery=0.1%
+  - Failure Probability : 42.41%
+  - Subsystem Breakdown : Engine=42.4%, Brake=0.1%, Battery=0.1%
+--------------------------------------------------------------------------------
+SENSOR TELEMETRY DATA QUALITY AUDIT:
+  - Data Quality Rating : HIGH
+  - Sensor Integrity    : 100% CAN-Bus Direct Telemetry (Zero Imputations)
 --------------------------------------------------------------------------------
 RECOMMENDED WORKSHOP ACTION:
-  All subsystems operating within nominal OEM tolerances. Continue routine scheduled maintenance interval.
+  Immediate engine shutdown required. Inspect oil pan level, check oil pump pickup screen for sludge, verify oil pressure sensor harness, inspect main bearings.
 
 REQUIRED REPLACEMENT PARTS:
-  None
+  Synthetic Engine Oil 5W-30, OEM Oil Filter, Oil Pressure Sensor
 
-ESTIMATED SERVICE DOWNTIME : 0.0 Hours
+ESTIMATED SERVICE DOWNTIME : 2.5 Hours
 ================================================================================

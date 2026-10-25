@@ -15,6 +15,7 @@ import json
 import random
 import argparse
 import datetime
+import pandas as pd
 try:
     from data_generator.generate_telematics import generate_vehicle_master, VehicleState
 except ImportError:
@@ -25,7 +26,9 @@ def run_simulator(
     interval: float = 3.0,
     records_per_batch: int = 25,
     num_vehicles: int = 50,
-    total_batches: int = 0  # 0 means infinite until Ctrl+C
+    total_batches: int = 0,  # 0 means infinite until Ctrl+C
+    inject_missing: bool = False,
+    missing_prob: float = 0.05
 ):
     os.makedirs(output_dir, exist_ok=True)
     print("=" * 70)
@@ -39,7 +42,11 @@ def run_simulator(
     print("=" * 70)
 
     # Initialize vehicles
-    master_df = generate_vehicle_master(num_vehicles)
+    master_path = "data/vehicle_master.csv"
+    if os.path.exists(master_path):
+        master_df = pd.read_csv(master_path)
+    else:
+        master_df = generate_vehicle_master(num_vehicles)
     master_rows = master_df.to_dict(orient="records")
     fleet = [VehicleState(row) for row in master_rows]
 
@@ -53,6 +60,12 @@ def run_simulator(
                 v = random.choice(fleet)
                 record, _ = v.step(delta_seconds=int(interval))
                 record["timestamp"] = now_iso
+                if inject_missing:
+                    try:
+                        from data_generator.generate_telematics import inject_telematics_noise
+                    except ImportError:
+                        from generate_telematics import inject_telematics_noise
+                    record = inject_telematics_noise(record, missing_prob=missing_prob)
                 batch_records.append(record)
 
             file_name = f"stream_{int(time.time())}_batch_{batch_idx:05d}.json"
@@ -81,6 +94,8 @@ if __name__ == "__main__":
     parser.add_argument("--records-per-batch", type=int, default=25, help="Number of vehicle pings per batch")
     parser.add_argument("--num-vehicles", type=int, default=50, help="Number of vehicles in simulated fleet")
     parser.add_argument("--total-batches", type=int, default=10, help="Total batches to emit (0 for infinite)")
+    parser.add_argument("--inject-missing", action="store_true", help="Inject random missing sensor values to test cleaner pipeline")
+    parser.add_argument("--missing-prob", type=float, default=0.05, help="Probability of missing sensor reading")
     args = parser.parse_args()
 
     run_simulator(
@@ -88,5 +103,8 @@ if __name__ == "__main__":
         interval=args.interval,
         records_per_batch=args.records_per_batch,
         num_vehicles=args.num_vehicles,
-        total_batches=args.total_batches
+        total_batches=args.total_batches,
+        inject_missing=args.inject_missing,
+        missing_prob=args.missing_prob
     )
+

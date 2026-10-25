@@ -49,8 +49,8 @@ DIAGNOSTIC_ACTIONS = {
     "Brake_Pad_Worn": {
         "subsystem": "Chassis / Braking",
         "severity": "HIGH",
-        "action": "Brake pad thickness below 3.0mm critical threshold. Replace front and rear friction pads, machine or replace brake rotors, bleed hydraulic fluid lines.",
-        "parts": ["Ceramic Brake Pad Set", "Vented Brake Rotors", "DOT-4 Brake Fluid"],
+        "action": "Brake pad thickness below wear safety threshold. Replace front and rear friction pads, machine or replace brake rotors, inspect hydraulic/pneumatic brake lines.",
+        "parts": ["Heavy-Duty Friction Pad Set", "Brake Rotors / Drums", "Brake Fluid / Air Valves"],
         "estimated_downtime_hours": 2.0
     },
     "ABS_Malfunction": {
@@ -63,15 +63,15 @@ DIAGNOSTIC_ACTIONS = {
     "Battery_Degraded": {
         "subsystem": "Electrical / Energy Storage",
         "severity": "MEDIUM",
-        "action": "Battery State-of-Health (SOH) dropped below operating safety margin. Perform 12V conductance battery test, clean terminal corrosion, replace 12V AGM auxiliary/starter battery.",
-        "parts": ["12V 80Ah AGM Battery", "Terminal Anti-Corrosion Spray"],
+        "action": "Battery State-of-Health (SOH) or voltage dropped below operating safety margin. Perform battery conductance test, clean terminal corrosion, replace auxiliary/starter battery.",
+        "parts": ["OEM Heavy-Duty Battery", "Terminal Anti-Corrosion Spray"],
         "estimated_downtime_hours": 0.8
     },
     "Alternator_Failure": {
         "subsystem": "Electrical / Charging System",
         "severity": "HIGH",
-        "action": "Alternator voltage regulation failure detected (<12.8V charging output). Inspect serpentine belt tensioner, test alternator diode bridge rectifier, replace alternator.",
-        "parts": ["High-Output Alternator 160A", "Serpentine Drive Belt"],
+        "action": "Alternator voltage regulation failure detected below charging output threshold. Inspect serpentine belt tensioner, test alternator diode bridge rectifier, replace alternator.",
+        "parts": ["High-Output Alternator", "Serpentine Drive Belt"],
         "estimated_downtime_hours": 2.0
     },
     "Healthy": {
@@ -113,7 +113,16 @@ class MaintenanceReportGenerator:
                 "subsystem_probabilities": probs if isinstance(probs, dict) else {},
                 "primary_at_risk_subsystem": max_comp.upper() if (fail_prob is not None and fail_prob >= 0.30) else "NONE",
                 "safety_alerts": telemetry_row.get("safety_alerts", []),
-                "ml_status": telemetry_row.get("ml_status", "AVAILABLE")
+                "ml_status": telemetry_row.get("ml_status", "AVAILABLE"),
+                "profile": telemetry_row.get("profile"),
+                "electrical_system": telemetry_row.get("electrical_system"),
+                "brake_configuration": telemetry_row.get("brake_configuration"),
+                "configuration_status": telemetry_row.get("configuration_status", "VALID"),
+                "configuration_flags": telemetry_row.get("configuration_flags", []),
+                "data_quality_status": telemetry_row.get("data_quality_status", "HIGH"),
+                "imputed_sensors": telemetry_row.get("imputed_sensors", []),
+                "sensor_errors": telemetry_row.get("sensor_errors", []),
+                "data_quality_warning": telemetry_row.get("data_quality_warning", "")
             }
 
         res = self.predictor.predict_record(telemetry_row)
@@ -130,7 +139,16 @@ class MaintenanceReportGenerator:
             "subsystem_probabilities": probs,
             "primary_at_risk_subsystem": max_comp.upper() if (fail_prob is not None and fail_prob >= 0.30) else "NONE",
             "safety_alerts": res.get("safety_alerts", []),
-            "ml_status": res.get("ml_status", "AVAILABLE")
+            "ml_status": res.get("ml_status", "AVAILABLE"),
+            "profile": res.get("profile"),
+            "electrical_system": res.get("electrical_system"),
+            "brake_configuration": res.get("brake_configuration"),
+            "configuration_status": res.get("configuration_status", "VALID"),
+            "configuration_flags": res.get("configuration_flags", []),
+            "data_quality_status": res.get("data_quality_status", "HIGH"),
+            "imputed_sensors": res.get("imputed_sensors", []),
+            "sensor_errors": res.get("sensor_errors", []),
+            "data_quality_warning": res.get("data_quality_warning", "")
         }
 
     def generate_report(self, vehicle_id: str, telemetry: Dict[str, Any], metadata: Dict[str, Any] = None) -> str:
@@ -161,12 +179,20 @@ class MaintenanceReportGenerator:
         b_str = f"{p_brk * 100:.1f}%" if p_brk is not None else "N/A"
         bat_str = f"{p_bat * 100:.1f}%" if p_bat is not None else "N/A"
 
+        profile = meta_dict.get("profile") or telemetry.get("profile", "A")
+        elec_sys = meta_dict.get("electrical_system") or telemetry.get("electrical_system", "12V")
+        brake_cfg = meta_dict.get("brake_configuration") or telemetry.get("brake_configuration", "Hydraulic Disc")
+        cfg_status = telemetry.get("configuration_status") or risk_info.get("configuration_status", "VALID")
+        cfg_flags = telemetry.get("configuration_flags") or risk_info.get("configuration_flags", [])
+
         # Build human-readable report narrative
         report_lines = [
             f"================================================================================",
             f" AUTOMATED AI FLEET MAINTENANCE DIAGNOSTIC WORK ORDER ",
             f"================================================================================",
             f"VEHICLE IDENTIFIER      : {vehicle_id} ({year} {brand} {model})",
+            f"CONFIGURATION PROFILE   : Profile {profile} | System: {elec_sys} | Brake: {brake_cfg}",
+            f"CONFIGURATION STATUS    : {cfg_status}",
             f"TIMESTAMP GENERATED     : {telemetry.get('timestamp', 'LIVE')}",
             f"HEALTH RISK STATUS      : {status} (Risk Index: {risk_str})",
             f"PRIMARY FAULT DETECTED  : {fail_type.replace('_', ' ').upper()}",
@@ -189,7 +215,27 @@ class MaintenanceReportGenerator:
         
         if risk_info.get("safety_alerts"):
             report_lines.append(f"  - Physical Alerts     : {', '.join(risk_info['safety_alerts'])}")
-            
+
+        # Telemetry Data Quality Audit
+        dq_status = risk_info.get("data_quality_status", telemetry.get("data_quality_status", "HIGH"))
+        imputed_sensors = risk_info.get("imputed_sensors", telemetry.get("imputed_sensors", []))
+        sensor_errors = risk_info.get("sensor_errors", telemetry.get("sensor_errors", []))
+        dq_warning = risk_info.get("data_quality_warning", telemetry.get("data_quality_warning", ""))
+
+        report_lines.extend([
+            f"--------------------------------------------------------------------------------",
+            f"SENSOR TELEMETRY DATA QUALITY AUDIT:",
+            f"  - Data Quality Rating : {dq_status}",
+        ])
+        if imputed_sensors:
+            report_lines.append(f"  - Causally Imputed    : {', '.join(imputed_sensors[:4])} (filled from rolling vehicle history)")
+        else:
+            report_lines.append(f"  - Sensor Integrity    : 100% CAN-Bus Direct Telemetry (Zero Imputations)")
+        if sensor_errors:
+            report_lines.append(f"  - Sensor Errors Flag  : {', '.join(sensor_errors)} (exceeded physical OEM bounds)")
+        if dq_warning and dq_status != "HIGH":
+            report_lines.append(f"  - Data Quality Note   : {dq_warning}")
+
         report_lines.extend([
             f"--------------------------------------------------------------------------------",
             f"RECOMMENDED WORKSHOP ACTION:",

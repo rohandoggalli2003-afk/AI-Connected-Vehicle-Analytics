@@ -1,0 +1,21 @@
+# AI-Powered Connected Vehicle Analytics Platform (BDA)
+# Python Dependencies for Local Execution (Windows / macOS / Linux)
+
+# Data Processing & Storage
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=14.0.0
+
+# Machine Learning & Serialization
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+joblib>=1.3.0
+
+# Dashboard & Web Application
+streamlit>=1.30.0
+
+# Experiment Tracking & Model Registry
+mlflow>=2.10.0
+
+# Visualization & Reporting
+matplotlib>=3.7.0

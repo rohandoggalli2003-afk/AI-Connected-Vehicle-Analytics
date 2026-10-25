@@ -65,6 +65,13 @@ def generate_vehicle_master(num_vehicles: int = 50) -> pd.DataFrame:
     
     df = pd.DataFrame(vehicles)
     return df
+SUPPORTED_ELECTRICAL_SYSTEMS = {"12V", "24V"}
+SUPPORTED_BRAKE_CONFIGURATIONS = {
+    "Hydraulic Disc",
+    "Hydraulic Disc/Drum",
+    "Pneumatic/Hydraulic Disc",
+    "Pneumatic S-Cam/Disc"
+}
 
 class VehicleState:
     """Maintains continuous physical state for a vehicle to create realistic time-series."""
@@ -73,16 +80,33 @@ class VehicleState:
         self.brand = master_row["brand"]
         self.fuel_type = master_row["fuel_type"]
         self.year = master_row["vehicle_year"]
+        self.profile = master_row.get("profile", "A")
+        
+        # Verify electrical system and brake configuration; flag unknown configurations
+        raw_elec = master_row.get("electrical_system")
+        raw_brake = master_row.get("brake_configuration")
+        
+        self.is_unknown_electrical = raw_elec not in SUPPORTED_ELECTRICAL_SYSTEMS
+        self.is_unknown_brake = raw_brake not in SUPPORTED_BRAKE_CONFIGURATIONS
+        
+        self.electrical_system = raw_elec if not self.is_unknown_electrical else f"UNKNOWN ({raw_elec})"
+        self.brake_configuration = raw_brake if not self.is_unknown_brake else f"UNKNOWN ({raw_brake})"
         
         # Base physical state
-        age_years = 2025 - self.year
+        age_years = max(1, 2025 - int(self.year))
         self.odometer = float(random.randint(15000 * age_years, 35000 * age_years))
         self.engine_hours = float(self.odometer / random.uniform(35.0, 50.0))
-        self.lat = master_row["base_lat"] + random.uniform(-0.15, 0.15)
-        self.lon = master_row["base_lon"] + random.uniform(-0.15, 0.15)
+        self.lat = float(master_row["base_lat"]) + random.uniform(-0.15, 0.15)
+        self.lon = float(master_row["base_lon"]) + random.uniform(-0.15, 0.15)
         
-        # Wear components
-        self.brake_pad_wear_mm = float(random.uniform(7.0, 11.5))
+        # Wear components configured per profile
+        if self.profile == "D":
+            self.brake_pad_wear_mm = float(random.uniform(14.0, 19.5))
+        elif self.profile == "B":
+            self.brake_pad_wear_mm = float(random.uniform(8.5, 12.5))
+        else:
+            self.brake_pad_wear_mm = float(random.uniform(7.5, 11.5))
+
         self.brake_fluid_level = float(random.uniform(85.0, 98.0))
         self.battery_health_percent = float(random.uniform(82.0, 99.0))
         self.fuel_level_percent = float(random.uniform(40.0, 95.0))
@@ -200,9 +224,16 @@ class VehicleState:
         wheel_rl = max(0.0, self.speed + slip * 0.7)
         wheel_rr = max(0.0, self.speed - slip * 0.7)
         
-        # Inject Brake Failures
+        # Inject Brake Failures configured per profile
         if self.failure_mode == "Brake_Pad_Worn" and self.degradation > 0.25:
-            self.brake_pad_wear_mm = max(1.1, 3.4 - (2.0 * self.degradation) + np.random.normal(0, 0.25))
+            if self.profile == "D":
+                self.brake_pad_wear_mm = max(1.8, 7.5 - (5.0 * self.degradation) + np.random.normal(0, 0.3))
+            elif self.profile == "B":
+                self.brake_pad_wear_mm = max(1.1, 4.6 - (3.0 * self.degradation) + np.random.normal(0, 0.25))
+            elif self.profile == "C":
+                self.brake_pad_wear_mm = max(0.9, 3.8 - (2.5 * self.degradation) + np.random.normal(0, 0.2))
+            else:
+                self.brake_pad_wear_mm = max(1.1, 3.5 - (2.0 * self.degradation) + np.random.normal(0, 0.25))
             brake_temp_c += (65.0 * self.degradation) + np.random.normal(0, 12.0)
         elif self.failure_mode == "ABS_Malfunction" and self.degradation > 0.35:
             # Intermittent tone ring / sensor fault
@@ -210,21 +241,39 @@ class VehicleState:
                 abs_fault_indicator = 1
                 wheel_fr = max(0.0, wheel_fr * (0.60 + np.random.uniform(-0.1, 0.1)))
 
-        # Battery & Electrical System
-        alternator_output_v = 14.1 + np.random.normal(0, 0.35)
-        battery_voltage_v = 13.7 + np.random.normal(0, 0.3)
+        # Battery & Electrical System (12V vs 24V architecture)
+        is_24v = (self.electrical_system == "24V")
+        is_12v = (self.electrical_system == "12V")
+        if is_24v:
+            alternator_output_v = 28.2 + np.random.normal(0, 0.4)
+            battery_voltage_v = 27.4 + np.random.normal(0, 0.35)
+        elif is_12v:
+            alternator_output_v = 14.1 + np.random.normal(0, 0.35)
+            battery_voltage_v = 13.7 + np.random.normal(0, 0.3)
+        else:
+            # Unknown electrical configuration: cannot assume 12V or 24V
+            alternator_output_v = 0.0
+            battery_voltage_v = 0.0
+
         battery_current_a = np.random.normal(12.0, 6.0) if self.speed > 0 else np.random.normal(-6.0, 4.0)
         battery_temp_c = self.ambient_temp + 8.0 + (battery_current_a * 0.15) + np.random.normal(0, 3.0)
         battery_charge_percent = np.clip(85.0 + np.random.normal(0, 6.0), 10.0, 100.0)
         
-        # Inject Battery Failures
+        # Inject Battery Failures (respecting electrical architecture)
         if self.failure_mode == "Battery_Degraded" and self.degradation > 0.25:
             self.battery_health_percent = max(30.0, 68.0 - (35.0 * self.degradation) + np.random.normal(0, 3.0))
-            battery_voltage_v = max(10.2, 12.2 - (1.9 * self.degradation) + np.random.normal(0, 0.3))
+            if is_24v:
+                battery_voltage_v = max(20.2, 24.8 - (3.8 * self.degradation) + np.random.normal(0, 0.35))
+            elif is_12v:
+                battery_voltage_v = max(10.2, 12.2 - (1.9 * self.degradation) + np.random.normal(0, 0.3))
             battery_temp_c += 18.0 * self.degradation
         elif self.failure_mode == "Alternator_Failure" and self.degradation > 0.30:
-            alternator_output_v = max(11.0, 12.5 - (1.6 * self.degradation) + np.random.normal(0, 0.3))
-            battery_voltage_v = max(10.4, 11.9 - (1.4 * self.degradation) + np.random.normal(0, 0.25))
+            if is_24v:
+                alternator_output_v = max(21.0, 25.0 - (3.2 * self.degradation) + np.random.normal(0, 0.35))
+                battery_voltage_v = max(20.5, 24.0 - (2.8 * self.degradation) + np.random.normal(0, 0.3))
+            elif is_12v:
+                alternator_output_v = max(11.0, 12.5 - (1.6 * self.degradation) + np.random.normal(0, 0.3))
+                battery_voltage_v = max(10.4, 11.9 - (1.4 * self.degradation) + np.random.normal(0, 0.25))
             battery_current_a = -30.0 * self.degradation + np.random.normal(0, 4.0)
 
         # Labels: Imminent failure defined by active severe degradation (>0.48 threshold with noise)
@@ -284,6 +333,35 @@ class VehicleState:
         }
         
         return stream_record, labels
+
+def inject_telematics_noise(record: dict, missing_prob: float = 0.05, noise_prob: float = 0.005) -> dict:
+    """
+    Optionally injects missing values (None) or physical boundary anomalies for testing
+    data quality validation and causal imputation pipelines.
+    """
+    corrupted = dict(record)
+    sensor_cols = [
+        "odometer_km", "engine_hours", "vehicle_speed_kph", "engine_temp_c",
+        "engine_rpm", "oil_pressure_psi", "coolant_temp_c", "fuel_level_percent",
+        "fuel_consumption_lph", "engine_load_percent", "throttle_position_percent",
+        "air_flow_rate_gps", "exhaust_gas_temp_c", "engine_vibration",
+        "brake_pad_wear_mm", "brake_fluid_level", "brake_temp_c",
+        "brake_pedal_position", "wheel_speed_fl_kph", "wheel_speed_fr_kph",
+        "wheel_speed_rl_kph", "wheel_speed_rr_kph", "battery_voltage_v",
+        "battery_current_a", "battery_temp_c", "alternator_output_v",
+        "battery_charge_percent", "battery_health_percent", "ambient_temp_c",
+        "gps_latitude", "gps_longitude"
+    ]
+    for col in sensor_cols:
+        if col in corrupted:
+            r = random.random()
+            if r < missing_prob:
+                corrupted[col] = None
+            elif r < (missing_prob + noise_prob):
+                # Out-of-bounds electrical glitch
+                corrupted[col] = round(float(corrupted[col]) * 3.5 + 50.0, 2)
+    return corrupted
+
 
 def generate_telematics_datasets(
     output_dir: str = "data",

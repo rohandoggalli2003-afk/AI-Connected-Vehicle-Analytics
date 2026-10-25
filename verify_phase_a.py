@@ -93,11 +93,16 @@ def verify_phase_a():
     df_silver = df_silver.merge(df_master, on="vehicle_id", how="inner")
     print(f"    Enriched with vehicle_master: {len(df_silver)} rows joined.")
     
-    # Diagnostic flags
+    # Diagnostic flags respecting electrical and brake configuration
+    is_24v = df_silver.get("electrical_system", "") == "24V"
+    batt_warn_v = np.where(is_24v, 23.6, 11.8)
+    is_prof_d = df_silver.get("profile", "") == "D"
+    brake_warn_mm = np.where(is_prof_d, 6.4, 3.2)
+
     df_silver["is_overheating"] = (df_silver["engine_temp_c"] > 105.0) | (df_silver["coolant_temp_c"] > 108.0)
     df_silver["is_low_oil"] = df_silver["oil_pressure_psi"] < 20.0
-    df_silver["is_worn_brakes"] = df_silver["brake_pad_wear_mm"] < 3.0
-    df_silver["is_battery_critical"] = (df_silver["battery_voltage_v"] < 11.8) | (df_silver["battery_health_percent"] < 50.0)
+    df_silver["is_worn_brakes"] = df_silver["brake_pad_wear_mm"] < brake_warn_mm
+    df_silver["is_battery_critical"] = (df_silver["battery_voltage_v"] < batt_warn_v) | (df_silver["battery_health_percent"] < 50.0)
     
     print(f"    Silver Diagnostic Summary:")
     print(f"      Overheating events    : {df_silver['is_overheating'].sum()}")
@@ -105,6 +110,67 @@ def verify_phase_a():
     print(f"      Worn brake pads       : {df_silver['is_worn_brakes'].sum()}")
     print(f"      Critical battery alert: {df_silver['is_battery_critical'].sum()}")
     
+    # 4b. Verify Duplicate Readings & Timestamp Ordering
+    print("\n[OK] Step 4b: Testing Deduplication & Invalid Timestamp Handling...")
+    dup_test_rows = [
+        {"vehicle_id": "VH-TEST", "timestamp": "2026-10-23 10:00:00", "engine_temp_c": 90.0, "speed_kph": 50.0},
+        {"vehicle_id": "VH-TEST", "timestamp": "2026-10-23 10:00:00", "engine_temp_c": 90.0, "speed_kph": 50.0}, # Exact duplicate
+        {"vehicle_id": "VH-TEST", "timestamp": "2026-10-23 09:58:00", "engine_temp_c": 88.0, "speed_kph": 45.0}, # Out-of-order
+    ]
+    df_dup = pd.DataFrame(dup_test_rows)
+    df_dup["timestamp"] = pd.to_datetime(df_dup["timestamp"])
+    df_dedup = df_dup.drop_duplicates(subset=["vehicle_id", "timestamp"]).sort_values(by="timestamp").reset_index(drop=True)
+    assert len(df_dedup) == 2, f"Expected 2 rows after deduplication, got {len(df_dedup)}"
+    assert df_dedup.iloc[0]["timestamp"] < df_dedup.iloc[1]["timestamp"], "Timestamps not sorted chronologically!"
+    print(f"    [PASS] Exact duplicate removed: 3 -> 2 rows. Chronological sorting verified.")
+
+    # 4c. Verify Outlier Boundaries vs Genuine Failure Signals
+    print("\n[OK] Step 4c: Testing Outlier Physical Boundaries vs Genuine Failure Signals...")
+    try:
+        from ml_pipeline.data_cleaner import detect_and_mask_sensor_errors, SENSOR_PHYSICAL_BOUNDS
+    except ImportError:
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from ml_pipeline.data_cleaner import detect_and_mask_sensor_errors, SENSOR_PHYSICAL_BOUNDS
+
+    # Test extreme sensor error (e.g. speed=999 km/h, battery=55V)
+    error_row = {"vehicle_id": "VH-TEST", "vehicle_speed_kph": 999.0, "battery_voltage_v": 55.0}
+    sanitized, err_flags = detect_and_mask_sensor_errors(error_row)
+    assert sanitized["vehicle_speed_kph"] is None, "Failed to mask speed=999 glitch!"
+    assert sanitized["battery_voltage_v"] is None, "Failed to mask battery=55V glitch!"
+    assert len(err_flags) == 2, "Expected 2 sensor error flags!"
+    print(f"    [PASS] Corrupted sensor readings masked: {err_flags}")
+
+    # Test genuine failure signals (engine overheat 118C, worn pad 1.5mm, discharged battery 10.8V)
+    failure_row = {"vehicle_id": "VH-TEST", "engine_temp_c": 118.0, "brake_pad_wear_mm": 1.5, "battery_voltage_v": 10.8}
+    sanitized_fail, fail_flags = detect_and_mask_sensor_errors(failure_row)
+    assert sanitized_fail["engine_temp_c"] == 118.0, "Genuine overheat failure was incorrectly masked!"
+    assert sanitized_fail["brake_pad_wear_mm"] == 1.5, "Genuine brake wear failure was incorrectly masked!"
+    assert sanitized_fail["battery_voltage_v"] == 10.8, "Genuine low battery failure was incorrectly masked!"
+    assert len(fail_flags) == 0, f"Genuine failure was falsely flagged as sensor error: {fail_flags}"
+    print(f"    [PASS] Genuine failure signals preserved intact (not flagged as sensor errors).")
+
+    # 4d. Verify Causal Vehicle-Wise Imputation Logic (e.g. 85, 87, 88 -> NaN filled with 87)
+    print("\n[OK] Step 4d: Testing Causal Rolling Median Imputation (Zero-Lookahead)...")
+    try:
+        from ml_pipeline.data_cleaner import LiveCausalVehicleBuffer, clean_batch_causal
+    except ImportError:
+        from ml_pipeline.data_cleaner import LiveCausalVehicleBuffer, clean_batch_causal
+
+    buffer = LiveCausalVehicleBuffer(window=3)
+    pings = [
+        {"vehicle_id": "V101", "timestamp": "2026-10-23 10:00:00", "engine_temp_c": 85.0},
+        {"vehicle_id": "V101", "timestamp": "2026-10-23 10:00:03", "engine_temp_c": 87.0},
+        {"vehicle_id": "V101", "timestamp": "2026-10-23 10:00:06", "engine_temp_c": 88.0},
+        {"vehicle_id": "V101", "timestamp": "2026-10-23 10:00:09", "engine_temp_c": None}, # Missing reading
+    ]
+    for p in pings[:3]:
+        buffer.process_telemetry(p)
+    cleaned_ping, dq_report = buffer.process_telemetry(pings[3])
+    assert cleaned_ping["engine_temp_c"] == 87.0, f"Expected median 87.0, got {cleaned_ping['engine_temp_c']}"
+    assert "engine_temp_c" in dq_report["imputed_sensors"], "engine_temp_c missing from imputed_sensors list!"
+    print(f"    [PASS] Vehicle V101 history [85, 87, 88] filled missing ping with rolling median: {cleaned_ping['engine_temp_c']}°C")
+
     # 5. Simulate Gold Rolling Features & Risk Scoring
     print("\n[OK] Step 5: Simulating Gold Aggregations & Component Risk Scoring...")
     gold_rows = []
@@ -167,15 +233,24 @@ def verify_phase_a():
     for _, r in high_risk.iterrows():
         print(f"      - {r['vehicle_id']} ({r['brand']} {r['model']}): Risk {r['overall_risk_score']}/100 [{r['fleet_health_status']}] | Eng:{r['engine_risk_score']} Brk:{r['brake_risk_score']} Bat:{r['battery_risk_score']}")
         
-    # 6. Verify Historical Dataset for ML Phase B
-    hist_path = "data/historical_labeled_telematics.parquet"
-    assert os.path.exists(hist_path), f"Missing {hist_path}"
-    df_hist = pd.read_parquet(hist_path)
-    print(f"\n[OK] Step 6: Verified ML Training Parquet Dataset: {len(df_hist)} rows, {len(df_hist.columns)} columns.")
-    print(f"    Labels present: 'engine_failure_imminent', 'brake_issue_imminent', 'battery_issue_imminent', 'failure_type'")
-    print(f"    Engine failure rate  : {df_hist['engine_failure_imminent'].mean()*100:.2f}%")
-    print(f"    Brake failure rate   : {df_hist['brake_issue_imminent'].mean()*100:.2f}%")
-    print(f"    Battery failure rate : {df_hist['battery_issue_imminent'].mean()*100:.2f}%")
+    # 6. Verify Dataset with Missing Values
+    missing_data_path = "data/historical_telematics_with_missing_values.csv"
+    if os.path.exists(missing_data_path):
+        df_mv = pd.read_csv(missing_data_path)
+        null_count = df_mv.isnull().sum().sum()
+        print(f"\n[OK] Step 6: Verified Dataset with Missing Values: {len(df_mv)} rows, {len(df_mv.columns)} columns.")
+        print(f"    Detected {null_count:,} total missing cells across dataset.")
+        
+        # Test causal cleaning
+        df_mv_clean, clean_stats = clean_batch_causal(df_mv.head(2000))
+        rem_nulls = df_mv_clean[[c for c in SENSOR_PHYSICAL_BOUNDS.keys() if c in df_mv_clean.columns]].isnull().sum().sum()
+        assert rem_nulls == 0, f"Expected 0 remaining sensor nulls after causal cleaning, found {rem_nulls}"
+        print(f"    [PASS] Causal imputation successfully resolved missing sensor values ({clean_stats['total_imputed_history']} from history).")
+    else:
+        hist_path = "data/historical_labeled_telematics.parquet"
+        assert os.path.exists(hist_path), f"Missing {hist_path}"
+        df_hist = pd.read_parquet(hist_path)
+        print(f"\n[OK] Step 6: Verified ML Training Parquet Dataset: {len(df_hist)} rows, {len(df_hist.columns)} columns.")
     
     print("\n" + "=" * 80)
     print(" ALL PHASE A PIPELINE VERIFICATION TESTS PASSED SUCCESSFULLY! ")
@@ -183,3 +258,4 @@ def verify_phase_a():
 
 if __name__ == "__main__":
     verify_phase_a()
+

@@ -35,131 +35,179 @@ An end-to-end Big Data Analytics (BDA) platform for real-time connected vehicle 
          ▼               ▼
 ┌────────────────┐ ┌────────────────┐
 │ Phase B: ML &  │ │ Phase D: Fleet │
-│ Model Training │ │ SQL Dashboard  │
+│ Model Training │ │ Streamlit BI   │
 └────────────────┘ └────────────────┘
 ```
 
 ---
 
-## 2. Telematics Data Design
+## 2. Installation & Prerequisites
 
-### A. Streaming Records (Exactly 34 Columns)
-| Category | Columns | Description |
-|---|---|---|
-| **Identity (2)** | `vehicle_id`, `timestamp` | Unique vehicle identifier (`VH-1001`...) and UTC timestamp. |
-| **Engine (14)** | `odometer_km`, `engine_hours`, `vehicle_speed_kph`, `engine_temp_c`, `engine_rpm`, `oil_pressure_psi`, `coolant_temp_c`, `fuel_level_percent`, `fuel_consumption_lph`, `engine_load_percent`, `throttle_position_percent`, `air_flow_rate_gps`, `exhaust_gas_temp_c`, `engine_vibration` | Core powertrain and thermal performance indicators. |
-| **Brakes (9)** | `brake_pad_wear_mm`, `brake_fluid_level`, `brake_temp_c`, `abs_fault_indicator`, `brake_pedal_position`, `wheel_speed_fl_kph`, `wheel_speed_fr_kph`, `wheel_speed_rl_kph`, `wheel_speed_rr_kph` | Brake wear, thermal spikes, ABS faults, and wheel slip deltas. |
-| **Battery (6)** | `battery_voltage_v`, `battery_current_a`, `battery_temp_c`, `alternator_output_v`, `battery_charge_percent`, `battery_health_percent` | Electrical health, charging state, and alternator performance. |
-| **Environment & Location (3)** | `ambient_temp_c`, `gps_latitude`, `gps_longitude` | Operational environmental conditions and GPS geolocations. |
+### Prerequisites
+- Python 3.10+ (tested on Python 3.10 & 3.11 on Windows, macOS, Linux)
+- Git & Git LFS (for large model binary checkouts)
 
-### B. Static Vehicle Master Table (Joined in Silver)
-- `vehicle_id`, `brand`, `vehicle_year`, `model`, `fuel_type`, `base_hub`, `base_lat`, `base_lon`
+### Setup Instructions
+```bash
+# 1. Clone repository and navigate to project root
+cd d:/project
 
-### C. Ground-Truth Failure Labels (Phase B Training Only)
-- `engine_failure_imminent` (0 or 1)
-- `brake_issue_imminent` (0 or 1)
-- `battery_issue_imminent` (0 or 1)
-- `failure_type` (`None`, `Engine_Overheat`, `Low_Oil_Pressure`, `Brake_Pad_Worn`, `ABS_Malfunction`, `Battery_Degraded`, `Alternator_Failure`)
+# 2. (Optional) Create and activate a virtual environment
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+
+# 3. Install required Python packages
+pip install -r requirements.txt
+```
 
 ---
 
-## 3. Project Structure
+## 3. Startup & Application Commands
+
+### A. Launch Live Streamlit Fleet Monitoring Dashboard
+```bash
+streamlit run dashboard/app.py
+```
+- Open your browser at **`http://localhost:8501`**.
+- Features:
+  - Total Monitored Fleet, Healthy, Warning, and Critical KPI summary cards.
+  - Interactive standard GPS geolocation map (`st.map`) with filterable regional presets (India Hubs, US Hubs, Global).
+  - Main Fleet Table displaying Vehicle ID, Brand, Model, Year, Configuration Profile, Health Status, Failure Probability progress bar, and real-time sensor metrics.
+  - Interactive AI Diagnostic Work Order generator and `.txt` download.
+
+### B. Run Live Streaming Telematics Simulator
+```bash
+# Emit micro-batches continuously to data/landing/ every 3 seconds
+python data_generator/simulator.py --interval 3 --records-per-batch 20
+
+# Emit a fixed number of micro-batches (e.g. 5 batches)
+python data_generator/simulator.py --interval 2 --records-per-batch 25 --total-batches 5
+```
+
+### C. Run Verification Suites
+```bash
+# 1. Dedicated Vehicle Configuration & Threshold Verification Suite
+python verify_vehicle_configurations.py
+
+# 2. Comprehensive Platform Regression Suite (Phases A, B, C, D)
+python verify_all_phases.py
+
+# 3. Phase A Lakehouse & Causal Imputation Suite
+python verify_phase_a.py
+```
+
+### D. Train ML Models (Local Benchmark)
+```bash
+python ml_pipeline/train_models.py
+```
+- Trains Logistic Regression, Random Forest, and XGBoost across Engine, Brake, and Battery targets.
+- Computes PCA (~95.5% cumulative variance) and validates out-of-sample unseen fleet recall (>= 95%).
+- Registers champion models to local MLflow artifact store.
+
+### E. Generate Diagnostic Work Orders
+```bash
+python reports/report_generator.py
+```
+- Produces mechanic-ready maintenance work orders saved to `reports/sample_maintenance_reports.txt`.
+
+---
+
+## 4. Vehicle Configuration & Threshold Architecture
+
+### A. Supported Profiles & Specifications
+The platform defines 4 standard threshold profiles in [`config/vehicle_thresholds.json`](file:///d:/project/config/vehicle_thresholds.json):
+
+| Profile | Vehicle Category | Electrical System | Brake Configuration | Engine Warning / Critical | Brake Warning / Critical | Battery Warning / Critical |
+|:---:|---|:---:|---|:---:|:---:|:---:|
+| **Profile A** | Passenger cars & SUVs (27 vehicles) | **12V** | Hydraulic Disc | 105.0°C / 112.0°C | 3.2 mm / 2.2 mm | 11.8 V / 11.0 V |
+| **Profile B** | Pickups & utility vehicles (8 vehicles) | **12V** | Hydraulic Disc/Drum | 105.0°C / 115.0°C | 4.0 mm / 2.0 mm | 11.8 V / 11.0 V |
+| **Profile C** | Medium commercial trucks (7 vehicles) | **12V** | Pneumatic/Hydraulic Disc | 105.0°C / 115.0°C | 3.2 mm / 1.6 mm | 11.8 V / 11.0 V |
+| **Profile D** | Heavy commercial trucks (8 vehicles) | **24V** | Pneumatic S-Cam/Disc | 105.0°C / 115.0°C | 6.4 mm / 3.2 mm | 23.6 V / 22.0 V |
+
+### B. Supported Architectures
+- **Supported Electrical Systems**: `["12V", "24V"]`
+- **Supported Brake Configurations**: `["Hydraulic Disc", "Hydraulic Disc/Drum", "Pneumatic/Hydraulic Disc", "Pneumatic S-Cam/Disc"]`
+
+### C. Unknown Configuration Handling Policy
+- If incoming telemetry or vehicle master specifies an unknown or unsupported electrical system (e.g. `48V`, `None`):
+  - Flags `configuration_status = "UNKNOWN_CONFIGURATION"`.
+  - Appends safety alert: `CONFIGURATION WARNING: Unknown electrical system configuration for {vid} ('{elec}'). 12V/24V thresholds suspended.`
+  - Voltage thresholds are suspended to prevent false alarms.
+- If brake configuration is unsupported:
+  - Flags `configuration_status = "UNKNOWN_CONFIGURATION"`.
+  - Appends safety alert: `CONFIGURATION WARNING: Unknown brake configuration for {vid} ('{brake}'). Brake wear thresholds suspended.`
+
+### D. Vehicle Heuristic Overrides
+- **Mahindra XUV700 (`VH-1002`)**:
+  - Coolant/Engine Temperature Warning: **113.0°C**
+  - Continuous Warning / Critical: **115.0°C**
+  - Classified as `documented_manual_heuristic` from owner manual specifications.
+
+### E. Sensor Alert Comparison Logic
+The platform enforces physical comparison rules across all predictors and evaluators:
+1. **High Engine Temperature**: Higher is bad $\rightarrow$ triggers alert when `eng_temp >= crit` (Critical) or `eng_temp >= warn` (Warning).
+2. **Low Brake Thickness**: Lower indicates wear $\rightarrow$ triggers alert when `brake_pad <= crit` (Critical) or `brake_pad <= warn` (Warning).
+3. **Low Battery Voltage**: Lower is discharged $\rightarrow$ triggers alert when `batt_v <= crit` (Critical) or `batt_v <= warn` (Warning).
+
+---
+
+## 5. Verified Test Results
+
+All verification suites have been executed and validated:
+
+| Verification Suite | Test Script | Total Checks | Result | Details |
+|---|---|:---:|:---:|---|
+| **Vehicle Configuration & Thresholds** | [`verify_vehicle_configurations.py`](file:///d:/project/verify_vehicle_configurations.py) | **7 / 7 Groups** | **100% PASSED** | All 50 vehicle mappings, Profiles A-D, 12V/24V battery, nominal, warning, critical, missing/stale data, and unknown configs. |
+| **Platform Regression Suite (A, B, C, D)** | [`verify_all_phases.py`](file:///d:/project/verify_all_phases.py) | **17 / 17 Checks** | **100% PASSED** | Ingestion, Silver cleansing & static join, Gold risk scoring, ML models & MLflow registry reproduction, maintenance work orders, and dashboard data loader. |
+| **Phase A Lakehouse & Imputation** | [`verify_phase_a.py`](file:///d:/project/verify_phase_a.py) | **6 / 6 Checks** | **100% PASSED** | Ingestion of 36 batches, boundary error masking, causal rolling median imputation, and Gold risk index evaluation. |
+| **Live Streamlit Dashboard** | [`dashboard/app.py`](file:///d:/project/dashboard/app.py) | **HTTP Health Check** | **HTTP 200 OK** | Running daemon on port 8501 (`http://localhost:8501`), active rendering of fleet table, GPS map, and work orders. |
+
+---
+
+## 6. Telematics Data Design (34 Columns)
+
+| Subsystem | Column Count | Features |
+|---|:---:|---|
+| **Identity** | 2 | `vehicle_id`, `timestamp` |
+| **Engine** | 14 | `odometer_km`, `engine_hours`, `vehicle_speed_kph`, `engine_temp_c`, `engine_rpm`, `oil_pressure_psi`, `coolant_temp_c`, `fuel_level_percent`, `fuel_consumption_lph`, `engine_load_percent`, `throttle_position_percent`, `air_flow_rate_gps`, `exhaust_gas_temp_c`, `engine_vibration` |
+| **Brakes** | 9 | `brake_pad_wear_mm`, `brake_fluid_level`, `brake_temp_c`, `abs_fault_indicator`, `brake_pedal_position`, `wheel_speed_fl_kph`, `wheel_speed_fr_kph`, `wheel_speed_rl_kph`, `wheel_speed_rr_kph` |
+| **Battery** | 6 | `battery_voltage_v`, `battery_current_a`, `battery_temp_c`, `alternator_output_v`, `battery_charge_percent`, `battery_health_percent` |
+| **Environment / Location** | 3 | `ambient_temp_c`, `gps_latitude`, `gps_longitude` |
+
+---
+
+## 7. Project Structure
 
 ```
 d:/project/
+├── config/
+│   ├── safety_thresholds.json                 # Engineering limits and baseline safety rules
+│   └── vehicle_thresholds.json                # Profiles A-D & 50 vehicle threshold configurations
 ├── data/
 │   ├── landing/                               # Landing zone for streaming micro-batches
-│   │   ├── batch_0001.json ... batch_0005.json
-│   │   └── stream_*_batch_*.json
-│   ├── vehicle_master.csv                     # Static reference table (50 vehicles)
+│   ├── vehicle_master.csv                     # Static reference table (50 vehicles with profiles)
 │   ├── historical_labeled_telematics.csv      # 20,000 labeled records for ML training
 │   └── historical_labeled_telematics.parquet  # Parquet format for fast ML loading
 ├── data_generator/
-│   ├── generate_telematics.py                 # Telematics dataset generator
-│   ├── simulator.py                           # Real-time streaming generator daemon
-│   └── README.md                              # Generator documentation
-├── notebooks/
-│   ├── 00_setup_and_data_init.py              # Environment setup & Vehicle Master initialization
-│   ├── 01_bronze_ingestion.py                 # Auto Loader / Structured Streaming into Bronze Delta
-│   ├── 02_silver_cleaning_enrichment.py       # Deduplication, physical boundaries, and master join
-│   ├── 03_gold_aggregations_features.py       # Rolling feature store & multi-subsystem risk scoring
-│   ├── 04_failure_prediction_ml.py            # Phase B: 3-model benchmark & MLflow model registry
-│   ├── 05_ai_maintenance_reports.py          # Phase C: AI maintenance report generation in Delta
-│   ├── 06_databricks_sql_dashboard_queries.py # Phase D: Lakeview & Databricks SQL queries
-│   └── README.md                              # Databricks deployment instructions
+│   ├── generate_telematics.py                 # Telematics dataset generator (12V/24V physics)
+│   └── simulator.py                           # Real-time streaming generator daemon
 ├── ml_pipeline/
-│   └── train_models.py                        # Local ML pipeline trainer (LR, RF, XGBoost + PCA)
+│   ├── data_cleaner.py                        # Preprocessing, boundary checks, and causal imputation
+│   ├── predictor.py                           # ML failure predictor & safety-alert engine
+│   └── train_models.py                        # ML benchmark trainer (LR, RF, XGBoost + PCA)
 ├── reports/
 │   ├── report_generator.py                    # Phase C AI maintenance work order generator
 │   └── sample_maintenance_reports.txt         # Generated diagnostic work orders
 ├── dashboard/
-│   └── app.py                                 # Phase D interactive Streamlit fleet dashboard
-├── docs/
-│   ├── FINAL_PROJECT_REPORT.md                # Comprehensive technical submission report
-│   └── PRESENTATION_SLIDES.md                 # 10-slide project presentation deck
+│   ├── app.py                                 # Phase D interactive Streamlit fleet dashboard
+│   └── data_loader.py                         # Fast caching stream loader and predictor bridge
 ├── models/                                    # Serialized champion models, scalers, PCA & metrics
-├── verify_phase_a.py                          # Local verification & end-to-end test runner
+├── verify_all_phases.py                       # 17-check platform regression test suite
+├── verify_vehicle_configurations.py           # Dedicated 50-vehicle configuration verification suite
+├── verify_phase_a.py                          # Phase A Lakehouse verification test runner
+├── requirements.txt                           # Python package dependencies
 └── README.md                                  # Platform overview & documentation
 ```
-
----
-
-## 4. Local Quickstart Guide (All Phases)
-
-### 1. Verification Suites
-```powershell
-# Run full end-to-end test suite across all Phases (A, B, C, D)
-python verify_all_phases.py
-
-# Or verify only Phase A (Data Engineering & Delta Lakehouse)
-python verify_phase_a.py
-```
-
-### 2. Live Telematics Streaming Simulator
-```powershell
-python data_generator/simulator.py --interval 2 --records-per-batch 25 --total-batches 10
-```
-
-### 3. Phase B: Train ML Models (Logistic Regression, Random Forest, XGBoost)
-```powershell
-python ml_pipeline/train_models.py
-```
-- Fits outlier clipping and `StandardScaler` strictly on train set.
-- Computes PCA (~95% variance) and benchmarks against original features.
-- Evaluates **Recall**, Precision, F1, and ROC-AUC.
-- Persists champion models and metadata to `models/`.
-
-### 4. Phase C: Generate AI Maintenance Diagnostic Work Orders
-```powershell
-python reports/report_generator.py
-```
-Outputs automated work orders with recommended garage actions, parts requisition, and service downtime to `reports/sample_maintenance_reports.txt`.
-
-### 5. Phase D: Launch the Interactive Fleet Monitoring Dashboard
-```powershell
-streamlit run dashboard/app.py
-```
-Launches an interactive web dashboard with GPS maps, failure probability gauges, and work order downloads.
-
----
-
-## 5. Running in Databricks Free / Community Edition
-
-1. **Import Notebooks**:
-   - In Databricks, navigate to **Workspace** > **Users** > `[your-user]`.
-   - Click **Import** and select the `.py` files inside `notebooks/`.
-2. **Execute In Order**:
-   - `00_setup_and_data_init.py` (Database, paths, and `vehicle_master` table)
-   - `01_bronze_ingestion.py` (Auto Loader raw streaming into Bronze Delta)
-   - `02_silver_cleaning_enrichment.py` (Deduplication, boundaries, and Silver join)
-   - `03_gold_aggregations_features.py` (Rolling features, trends, and risk scoring)
-   - `04_failure_prediction_ml.py` (Model training, PCA, MLflow comparison, and Model Registry)
-   - `05_ai_maintenance_reports.py` (Real-time AI diagnostic work order generation)
-   - `06_databricks_sql_dashboard_queries.py` (Databricks Lakeview / SQL dashboard queries)
-
----
-
-## 6. Project Documentation & Submission Deliverables
-
-- **Final Technical Report**: [FINAL_PROJECT_REPORT.md](file:///d:/project/docs/FINAL_PROJECT_REPORT.md)
-- **Presentation Deck**: [PRESENTATION_SLIDES.md](file:///d:/project/docs/PRESENTATION_SLIDES.md)

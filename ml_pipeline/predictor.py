@@ -99,10 +99,16 @@ DEFAULT_SAFETY_THRESHOLDS = {
 }
 
 
+try:
+    from ml_pipeline.data_cleaner import LiveCausalVehicleBuffer, CORE_MANDATORY_FIELDS, SENSOR_PHYSICAL_BOUNDS
+except ImportError:
+    from data_cleaner import LiveCausalVehicleBuffer, CORE_MANDATORY_FIELDS, SENSOR_PHYSICAL_BOUNDS
+
+
 class UnifiedVehiclePredictor:
     """
     Singleton-style unified predictor executing calibrated ML failure prediction
-    with per-vehicle live rolling window cache, input validation, and safety net overrides.
+    with per-vehicle live causal rolling window cache, data quality validation, and safety net overrides.
     """
     def __init__(self, models_dir: str = "models", config_dir: str = "config"):
         self.models_dir = models_dir
@@ -111,12 +117,16 @@ class UnifiedVehiclePredictor:
         self.feature_names = None
         self.clipping_bounds = None
         self.pca = None
+        self.train_medians = {}
         self.champions_summary = {}
         self.models = {}
         self.safety_thresholds = DEFAULT_SAFETY_THRESHOLDS
         
-        # Per-vehicle 5-ping rolling observation buffer for live inference
+        # Per-vehicle 5-ping rolling observation buffer for live feature rolling
         self.vehicle_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=5))
+        
+        # Causal vehicle-wise missing value and outlier auditor buffer
+        self.causal_buffer = LiveCausalVehicleBuffer(window=3, max_age_seconds=600, train_medians=self.train_medians)
         
         self._load_artifacts()
         self._load_configs()
@@ -127,6 +137,14 @@ class UnifiedVehiclePredictor:
         bounds_path = os.path.join(self.models_dir, "clipping_bounds.joblib")
         pca_path    = os.path.join(self.models_dir, "pca.joblib")
         champ_path  = os.path.join(self.models_dir, "champions_summary.json")
+        medians_path = os.path.join(self.models_dir, "train_medians.joblib")
+
+        if os.path.exists(medians_path):
+            try:
+                self.train_medians = joblib.load(medians_path)
+                self.causal_buffer.set_train_medians(self.train_medians)
+            except Exception as e:
+                logger.warning(f"Could not load train_medians.joblib: {e}")
 
         if os.path.exists(scaler_path) and os.path.exists(feats_path):
             self.scaler = joblib.load(scaler_path)
@@ -154,44 +172,77 @@ class UnifiedVehiclePredictor:
             self.models = {}
 
     def _load_configs(self):
+        self.vehicle_thresholds = {}
+        self.supported_electrical_systems = {"12V", "24V"}
+        self.supported_brake_configurations = {
+            "Hydraulic Disc",
+            "Hydraulic Disc/Drum",
+            "Pneumatic/Hydraulic Disc",
+            "Pneumatic S-Cam/Disc"
+        }
+        self.profiles = {}
+        self.vehicle_master = {}
+
+        # 1. Load vehicle_thresholds.json
+        v_thresh_path = os.path.join(self.config_dir, "vehicle_thresholds.json")
+        if os.path.exists(v_thresh_path):
+            try:
+                with open(v_thresh_path, "r", encoding="utf-8") as f:
+                    v_data = json.load(f)
+                    if "supported_electrical_systems" in v_data:
+                        self.supported_electrical_systems = set(v_data["supported_electrical_systems"])
+                    if "supported_brake_configurations" in v_data:
+                        self.supported_brake_configurations = set(v_data["supported_brake_configurations"])
+                    self.profiles = v_data.get("profiles", {})
+                    for item in v_data.get("vehicles", []):
+                        vid = item.get("vehicle_id")
+                        if vid:
+                            self.vehicle_thresholds[vid] = item
+            except Exception as e:
+                logger.warning(f"Could not load vehicle_thresholds.json: {e}")
+
+        # 2. Load safety_thresholds.json
         cfg_path = os.path.join(self.config_dir, "safety_thresholds.json")
         if os.path.exists(cfg_path):
             try:
-                with open(cfg_path, "r") as f:
+                with open(cfg_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if "subsystems" in data:
                         self.safety_thresholds = data["subsystems"]
             except Exception as e:
                 logger.warning(f"Could not load safety_thresholds.json: {e}")
 
+        # 3. Load vehicle_master.csv cache if present
+        v_master_path = os.path.join("data", "vehicle_master.csv")
+        if os.path.exists(v_master_path):
+            try:
+                df_m = pd.read_csv(v_master_path)
+                for _, r in df_m.iterrows():
+                    self.vehicle_master[str(r.get("vehicle_id"))] = r.to_dict()
+            except Exception as e:
+                logger.warning(f"Could not load vehicle_master.csv: {e}")
+
     def reset_history(self, vehicle_id: Optional[str] = None):
-        """Clears rolling sensor history for one or all vehicles."""
+        """Clears rolling sensor history and causal cleaner buffer for one or all vehicles."""
         if vehicle_id:
             if vehicle_id in self.vehicle_history:
                 self.vehicle_history[vehicle_id].clear()
+            self.causal_buffer.clear(vehicle_id)
         else:
             self.vehicle_history.clear()
+            self.causal_buffer.clear()
 
     def predict_record(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Runs ML prediction with live rolling stats calculation and safety overrides.
-        Returns:
-            overall_risk_score (float, 0.0 to 1.0, or None if unavailable)
-            failure_probability (float, alias for overall_risk_score for backwards compatibility)
-            joint_failure_probability (float, combined statistical probability of any failure)
-            status ('CRITICAL', 'WARNING', 'HEALTHY', or 'UNAVAILABLE')
-            predicted_failure_type (str)
-            subsystem_probabilities (dict of float or None)
-            safety_alerts (list of str)
-            ml_status ('AVAILABLE', 'DEGRADED', 'UNAVAILABLE', 'INVALID_INPUT')
-            ml_errors (dict of error messages)
-            prediction_valid (bool)
-            data_quality_report (dict detailing imputed and missing fields)
+        Runs causal cleaning, ML failure prediction with live rolling stats calculation,
+        data quality auditing, and safety net overrides.
         """
-        # 1. Missing-Data Validation: Check Core Mandatory Fields
-        missing_mandatory = [col for col in CORE_MANDATORY_FIELDS if col not in row or row[col] is None]
-        if missing_mandatory:
-            err_msg = f"Missing core mandatory telemetry fields: {missing_mandatory}"
+        # 1. Causal Vehicle-Wise Data Cleaning & Physical Sanity Audit
+        cleaned_row, dq_report = self.causal_buffer.process_telemetry(row)
+
+        # Check if mandatory sensors could not be resolved from history or baseline
+        if dq_report["status"] == "UNAVAILABLE":
+            err_msg = dq_report.get("warning_msg", "Critical mandatory fields missing without suitable history")
             logger.error(err_msg)
             return {
                 "overall_risk_score": None,
@@ -205,26 +256,28 @@ class UnifiedVehiclePredictor:
                 "subsystem_probabilities": {"engine": None, "brake": None, "battery": None},
                 "subsystem_status": {"engine": "INVALID_INPUT", "brake": "INVALID_INPUT", "battery": "INVALID_INPUT"},
                 "safety_alerts": [f"Input Error: {err_msg}"],
-                "data_quality_report": {
-                    "missing_mandatory": missing_mandatory,
-                    "imputed_secondary": []
-                }
+                "data_quality_report": dq_report,
+                "data_quality_status": "UNAVAILABLE",
+                "imputed_sensors": dq_report.get("imputed_sensors", []),
+                "imputed_count": dq_report.get("imputed_count", 0),
+                "sensor_errors": dq_report.get("sensor_errors", []),
+                "data_quality_warning": dq_report.get("warning_msg", "")
             }
 
-        # 2. Extract Physical Sensor Readings Safely
-        vid = str(row.get("vehicle_id", "default_vh"))
-        eng_temp = float(row.get("engine_temp_c", 90.0))
-        cool_temp = float(row.get("coolant_temp_c", 87.0))
-        oil_psi = float(row.get("oil_pressure_psi", 45.0))
-        eng_vib = float(row.get("engine_vibration", 1.0))
-        brake_pad = float(row.get("brake_pad_wear_mm", 8.0))
-        brake_temp = float(row.get("brake_temp_c", 95.0))
-        abs_fault = int(row.get("abs_fault_indicator", 0))
-        batt_v = float(row.get("battery_voltage_v", 13.8))
-        batt_soh = float(row.get("battery_health_percent", 95.0))
-        alt_v = float(row.get("alternator_output_v", 14.1))
-        wheel_fl = float(row.get("wheel_speed_fl_kph", 0.0))
-        wheel_fr = float(row.get("wheel_speed_fr_kph", 0.0))
+        # 2. Extract Physical Sensor Readings Safely (from causally cleaned row)
+        vid = str(cleaned_row.get("vehicle_id", "default_vh"))
+        eng_temp = float(cleaned_row.get("engine_temp_c", 90.0))
+        cool_temp = float(cleaned_row.get("coolant_temp_c", 87.0))
+        oil_psi = float(cleaned_row.get("oil_pressure_psi", 45.0))
+        eng_vib = float(cleaned_row.get("engine_vibration", 1.0))
+        brake_pad = float(cleaned_row.get("brake_pad_wear_mm", 8.0))
+        brake_temp = float(cleaned_row.get("brake_temp_c", 95.0))
+        abs_fault = int(cleaned_row.get("abs_fault_indicator", 0))
+        batt_v = float(cleaned_row.get("battery_voltage_v", 13.8))
+        batt_soh = float(cleaned_row.get("battery_health_percent", 95.0))
+        alt_v = float(cleaned_row.get("alternator_output_v", 14.1))
+        wheel_fl = float(cleaned_row.get("wheel_speed_fl_kph", 0.0))
+        wheel_fr = float(cleaned_row.get("wheel_speed_fr_kph", 0.0))
 
         # 3. Maintain Per-Vehicle Rolling History & Calculate Window Features
         hist_entry = {
@@ -348,31 +401,82 @@ class UnifiedVehiclePredictor:
         if ml_errors:
             ml_status = "UNAVAILABLE" if len(ml_errors) == 3 else "DEGRADED"
 
-        # 6. Centralized Physical Sensor Safety Checks (Hard Independent Safety Net)
+        # 6. Centralized Physical Sensor Safety Checks (Configuration-Aware Safety Net)
         safety_alerts = []
         eth = self.safety_thresholds.get("engine", DEFAULT_SAFETY_THRESHOLDS["engine"])
         bth = self.safety_thresholds.get("brake", DEFAULT_SAFETY_THRESHOLDS["brake"])
         batth = self.safety_thresholds.get("battery", DEFAULT_SAFETY_THRESHOLDS["battery"])
 
-        # Engine Safety Checks
-        if eng_temp >= eth.get("overheat_warning_temp_c", 105.0) or cool_temp >= eth.get("coolant_overheat_temp_c", 108.0):
-            override = 0.94 if eng_temp >= eth.get("overheat_critical_temp_c", 112.0) else 0.48
+        # Fetch vehicle-specific thresholds and configurations
+        vt = getattr(self, "vehicle_thresholds", {}).get(vid, {})
+        master_meta = getattr(self, "vehicle_master", {}).get(vid, {})
+
+        profile = row.get("profile") or vt.get("profile") or master_meta.get("profile", "A")
+        raw_elec = row.get("electrical_system") or vt.get("electrical_system") or master_meta.get("electrical_system")
+        raw_brake = row.get("brake_configuration") or vt.get("brake_configuration") or master_meta.get("brake_configuration")
+
+        config_flags = []
+        config_status = "VALID"
+
+        # Check Electrical System Configuration
+        is_elec_valid = raw_elec in getattr(self, "supported_electrical_systems", {"12V", "24V"})
+        if not is_elec_valid:
+            config_status = "UNKNOWN_CONFIGURATION"
+            msg = f"Unknown electrical system configuration for {vid} ('{raw_elec}'). 12V/24V thresholds suspended."
+            config_flags.append(msg)
+            safety_alerts.append(f"CONFIGURATION WARNING: {msg}")
+
+        # Check Brake Configuration
+        is_brake_valid = raw_brake in getattr(self, "supported_brake_configurations", {
+            "Hydraulic Disc", "Hydraulic Disc/Drum", "Pneumatic/Hydraulic Disc", "Pneumatic S-Cam/Disc"
+        })
+        if not is_brake_valid:
+            config_status = "UNKNOWN_CONFIGURATION"
+            msg = f"Unknown brake configuration for {vid} ('{raw_brake}'). Brake wear thresholds suspended."
+            config_flags.append(msg)
+            safety_alerts.append(f"CONFIGURATION WARNING: {msg}")
+
+        # Engine Safety Checks: High engine temperature triggers alerts
+        eng_warn = vt.get("engine_warning_temp_c", eth.get("overheat_warning_temp_c", 105.0))
+        eng_crit = vt.get("engine_critical_temp_c", eth.get("overheat_critical_temp_c", 112.0))
+        if eng_temp >= eng_crit:
+            override = 0.94
             subsystem_probabilities["engine"] = max(subsystem_probabilities.get("engine") or 0.0, override)
-            safety_alerts.append(f"Engine Overheating ({eng_temp:.1f} deg C)" if eng_temp >= 112.0 else f"Engine Temperature Warning ({eng_temp:.1f} deg C)")
-        if oil_psi <= eth.get("low_oil_warning_psi", 22.0):
-            override = 0.96 if oil_psi <= eth.get("low_oil_critical_psi", 15.0) else 0.50
+            safety_alerts.append(f"Engine Overheating ({eng_temp:.1f} deg C)")
+        elif eng_temp >= eng_warn or cool_temp >= eth.get("coolant_overheat_temp_c", 108.0):
+            override = 0.48
             subsystem_probabilities["engine"] = max(subsystem_probabilities.get("engine") or 0.0, override)
-            safety_alerts.append(f"Low Oil Pressure Critical ({oil_psi:.1f} PSI)" if oil_psi <= 15.0 else f"Low Oil Pressure Warning ({oil_psi:.1f} PSI)")
+            safety_alerts.append(f"Engine Temperature Warning ({eng_temp:.1f} deg C)")
+
+        if oil_psi <= eth.get("low_oil_critical_psi", 15.0):
+            override = 0.96
+            subsystem_probabilities["engine"] = max(subsystem_probabilities.get("engine") or 0.0, override)
+            safety_alerts.append(f"Low Oil Pressure Critical ({oil_psi:.1f} PSI)")
+        elif oil_psi <= eth.get("low_oil_warning_psi", 22.0):
+            override = 0.50
+            subsystem_probabilities["engine"] = max(subsystem_probabilities.get("engine") or 0.0, override)
+            safety_alerts.append(f"Low Oil Pressure Warning ({oil_psi:.1f} PSI)")
+
         if eng_vib >= eth.get("excessive_vibration_mms", 3.2):
             override = 0.45
             subsystem_probabilities["engine"] = max(subsystem_probabilities.get("engine") or 0.0, override)
             safety_alerts.append(f"Excessive Engine Vibration ({eng_vib:.2f} mm/s)")
 
-        # Brake Safety Checks
-        if brake_pad <= bth.get("pad_wear_warning_mm", 3.2):
-            override = 0.98 if brake_pad <= bth.get("pad_wear_critical_mm", 2.2) else 0.48
-            subsystem_probabilities["brake"] = max(subsystem_probabilities.get("brake") or 0.0, override)
-            safety_alerts.append(f"Worn Brake Pads Critical ({brake_pad:.2f} mm)" if brake_pad <= 2.2 else f"Worn Brake Pads Warning ({brake_pad:.2f} mm)")
+        # Brake Safety Checks: Low brake thickness indicates wear (applied ONLY when configuration is supported)
+        brake_warn = None
+        brake_crit = None
+        if is_brake_valid:
+            brake_warn = vt.get("brake_warning_thickness_mm", bth.get("pad_wear_warning_mm", 3.2))
+            brake_crit = vt.get("brake_critical_thickness_mm", bth.get("pad_wear_critical_mm", 2.2))
+            if brake_pad <= brake_crit:
+                override = 0.98
+                subsystem_probabilities["brake"] = max(subsystem_probabilities.get("brake") or 0.0, override)
+                safety_alerts.append(f"Worn Brake Pads Critical ({brake_pad:.2f} mm)")
+            elif brake_pad <= brake_warn:
+                override = 0.48
+                subsystem_probabilities["brake"] = max(subsystem_probabilities.get("brake") or 0.0, override)
+                safety_alerts.append(f"Worn Brake Pads Warning ({brake_pad:.2f} mm)")
+
         if brake_temp >= bth.get("thermal_spike_c", 260.0):
             override = 0.52
             subsystem_probabilities["brake"] = max(subsystem_probabilities.get("brake") or 0.0, override)
@@ -382,25 +486,56 @@ class UnifiedVehiclePredictor:
             subsystem_probabilities["brake"] = max(subsystem_probabilities.get("brake") or 0.0, override)
             safety_alerts.append("ABS System Fault Indicator Active")
 
-        # Battery Safety Checks
-        if batt_v <= batth.get("voltage_warning_v", 11.8):
-            override = 0.98 if batt_v <= batth.get("voltage_critical_v", 11.0) else 0.50
+        # Battery Safety Checks: Low battery voltage triggers alerts (applied ONLY when 12V or 24V configuration supports them)
+        batt_warn = None
+        batt_crit = None
+        alt_warn = None
+        alt_crit = None
+        if is_elec_valid:
+            if raw_elec == "24V":
+                batt_warn = vt.get("battery_warning_voltage_v", 23.6)
+                batt_crit = vt.get("battery_critical_voltage_v", 22.0)
+                alt_warn = 25.6
+                alt_crit = 24.4
+            else:  # "12V"
+                batt_warn = vt.get("battery_warning_voltage_v", batth.get("voltage_warning_v", 11.8))
+                batt_crit = vt.get("battery_critical_voltage_v", batth.get("voltage_critical_v", 11.0))
+                alt_warn = batth.get("alternator_undervoltage_v", 12.8)
+                alt_crit = 12.2
+
+            if batt_v <= batt_crit:
+                override = 0.98
+                subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
+                safety_alerts.append(f"Critically Low Battery Voltage ({batt_v:.2f}V)")
+            elif batt_v <= batt_warn:
+                override = 0.50
+                subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
+                safety_alerts.append(f"Battery Voltage Warning ({batt_v:.2f}V)")
+
+            if alt_v <= alt_crit:
+                override = 0.88
+                subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
+                safety_alerts.append(f"Alternator Charging Malfunction ({alt_v:.2f}V)")
+            elif alt_v <= alt_warn:
+                override = 0.48
+                subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
+                safety_alerts.append(f"Alternator Undervoltage Warning ({alt_v:.2f}V)")
+
+        if batt_soh <= batth.get("soh_critical_pct", 40.0):
+            override = 0.92
             subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
-            safety_alerts.append(f"Critically Low Battery Voltage ({batt_v:.2f}V)" if batt_v <= 11.0 else f"Battery Voltage Warning ({batt_v:.2f}V)")
-        if batt_soh <= batth.get("soh_warning_pct", 50.0):
-            override = 0.92 if batt_soh <= batth.get("soh_critical_pct", 40.0) else 0.46
+            safety_alerts.append(f"Battery SOH Severely Degraded ({batt_soh:.1f}%)")
+        elif batt_soh <= batth.get("soh_warning_pct", 50.0):
+            override = 0.46
             subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
-            safety_alerts.append(f"Battery SOH Severely Degraded ({batt_soh:.1f}%)" if batt_soh <= 40.0 else f"Battery SOH Warning ({batt_soh:.1f}%)")
-        if alt_v <= batth.get("alternator_undervoltage_v", 12.8):
-            override = 0.88 if alt_v <= 12.2 else 0.48
-            subsystem_probabilities["battery"] = max(subsystem_probabilities.get("battery") or 0.0, override)
-            safety_alerts.append(f"Alternator Charging Malfunction ({alt_v:.2f}V)" if alt_v <= 12.2 else f"Alternator Undervoltage Warning ({alt_v:.2f}V)")
+            safety_alerts.append(f"Battery SOH Warning ({batt_soh:.1f}%)")
 
         # 7. Synthesize Overall Risk Score & Calibrated Joint Failure Probability
         valid_probs = [v for v in subsystem_probabilities.values() if v is not None]
+        has_physical_alert = any(not a.startswith("CONFIGURATION WARNING") for a in safety_alerts)
 
-        if not valid_probs and not safety_alerts:
-            # Model inference failed completely and no sensor breaches: do NOT falsely return Healthy!
+        if not valid_probs and not has_physical_alert:
+            # Model inference failed completely and no physical sensor breaches: do NOT falsely return Healthy or Critical!
             overall_risk = None
             joint_prob = None
             status = "UNAVAILABLE"
@@ -431,7 +566,7 @@ class UnifiedVehiclePredictor:
                 else:
                     status = "HEALTHY"
 
-            # 8. Determine Specific Predicted Failure Type
+            # 8. Determine Specific Predicted Failure Type (Configuration-Aware)
             if overall_risk < 0.30 and not ml_errors:
                 pred_type = "Healthy"
             else:
@@ -444,12 +579,15 @@ class UnifiedVehiclePredictor:
                 elif p_brk >= p_bat:
                     if brake_temp >= 240.0:
                         pred_type = "Brake_Overheat"
-                    elif brake_pad <= 3.2:
+                    elif is_brake_valid and brake_warn is not None and brake_pad <= brake_warn:
                         pred_type = "Brake_Pad_Worn"
                     else:
                         pred_type = "ABS_Malfunction"
                 else:
-                    pred_type = "Alternator_Failure" if alt_v <= 12.8 else "Battery_Degraded"
+                    if is_elec_valid and alt_warn is not None and alt_v <= alt_warn:
+                        pred_type = "Alternator_Failure"
+                    else:
+                        pred_type = "Battery_Degraded"
 
         return {
             "overall_risk_score": round(overall_risk, 4) if overall_risk is not None else None,
@@ -468,10 +606,17 @@ class UnifiedVehiclePredictor:
             },
             "subsystem_status": subsystem_status,
             "safety_alerts": safety_alerts,
-            "data_quality_report": {
-                "missing_mandatory": missing_mandatory,
-                "imputed_secondary": imputed_secondary
-            }
+            "profile": profile,
+            "electrical_system": raw_elec,
+            "brake_configuration": raw_brake,
+            "configuration_status": config_status,
+            "configuration_flags": config_flags,
+            "data_quality_report": dq_report,
+            "data_quality_status": dq_report.get("status", "HIGH"),
+            "imputed_sensors": dq_report.get("imputed_sensors", []),
+            "imputed_count": dq_report.get("imputed_count", 0),
+            "sensor_errors": dq_report.get("sensor_errors", []),
+            "data_quality_warning": dq_report.get("warning_msg", "")
         }
 
 

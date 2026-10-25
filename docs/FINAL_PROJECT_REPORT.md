@@ -125,36 +125,28 @@ Simulated across 20,000 observations for training Phase B models:
 ## 5. Machine Learning Pipeline & Model Evaluation (Phase B)
 
 ### Methodology & Anti-Leakage Rigor
-1. **Chronological Splitting**: An 80% train / 20% test split ordered strictly by timestamp ensures historical degradation patterns predict future failure events.
-2. **Zero-Leakage Transformation**: Outlier clipping thresholds (1st and 99th percentiles), `StandardScaler`, and `PCA` were **fitted strictly on the training partition** and applied without refitting to the test set.
-3. **Dimensionality Reduction**: PCA retained **95.89%** of cumulative variance, reducing the feature space from 38 down to 18 orthogonal components.
-4. **Cost-Sensitive Learning**: Class weighting (`class_weight='balanced'` and `scale_pos_weight`) compensated for natural class imbalance (Engine failure rate ~3.1%, Brake issue rate ~10.9%, Battery issue rate ~4.7%).
-5. **Evaluation Metric Prioritization**: In commercial fleet management, **Recall is the critical objective**. A False Negative (missing an imminent failure) causes an uncontrolled breakdown on a highway, potentially causing catastrophic engine seizure or accidents. A False Positive results merely in a scheduled 30-minute shop inspection.
+1. **Dataset with Missing Sensor Readings**: The ML training pipeline processes `data/historical_telematics_with_missing_values.csv` (20,000 observations containing 48,006 missing values across 31 continuous sensor streams, simulating realistic CAN-bus dropouts).
+2. **Chronological Splitting Before Transformation**: A strict chronological 3-way split (70% Train, 15% Validation, 15% Test) is executed **before** fitting any imputation statistics, scalers, or PCA components to completely prevent temporal leakage.
+3. **Causal Vehicle-Wise Imputation**: For each vehicle, missing or invalid sensor readings are imputed causally using the rolling median of its previous 3 valid readings (strictly backward-looking with zero lookahead). If cold-start occurs with no history, it safely falls back to training partition medians.
+4. **Physical Limits vs Genuine Failure Signals**: Physical operating limits filter transmission errors (e.g., negative speeds, battery voltage >22V) without corrupting genuine failure signatures (e.g., engine temperature 118°C or brake pad thickness 1.5mm).
+5. **Zero Target Leakage from Data Quality**: Data quality metadata (imputation counts, error flags) are tracked exclusively for dispatcher warnings and garage work orders and are strictly excluded from the ML feature set.
+6. **Dimensionality Reduction & Cost-Sensitive Learning**: PCA captured **95.51%** of cumulative variance across 20 orthogonal components. Cost-sensitive weighting ($C_{\text{FN}}=\$5,000$, $C_{\text{FP}}=\$200$) prioritized **Recall** to eliminate catastrophic highway breakdowns.
 
-### Benchmark Results Table
+### Benchmark Results Table (Retrained with Causal Imputation on Untouched Test Set)
 
-| Target Subsystem | Algorithm | Feature Representation | Precision | Recall (Priority) | F1-Score | ROC-AUC | Champion Status |
-|---|---|---|---|---|---|---|---|
-| **Engine Failure** | **Logistic Regression** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | 🏆 **Champion** |
-| Engine Failure | Random Forest | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Engine Failure | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Engine Failure | Logistic Regression | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Engine Failure | Random Forest | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Engine Failure | XGBoost | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| **Brake Issue** | **Logistic Regression** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | 🏆 **Champion** |
-| Brake Issue | Random Forest | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Brake Issue | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Brake Issue | Logistic Regression | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Brake Issue | Random Forest | PCA (95% Variance) | 1.0000 | 0.9946 | 0.9973 | 1.0000 | Evaluated |
-| Brake Issue | XGBoost | PCA (95% Variance) | 1.0000 | 0.9929 | 0.9964 | 1.0000 | Evaluated |
-| **Battery Issue** | **Logistic Regression** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | 🏆 **Champion** |
-| Battery Issue | Random Forest | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Battery Issue | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Battery Issue | Logistic Regression | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Battery Issue | Random Forest | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
-| Battery Issue | XGBoost | PCA (95% Variance) | 1.0000 | 1.0000 | 1.0000 | 1.0000 | Evaluated |
+| Target Subsystem | Algorithm | Feature Representation | Precision | Recall (Priority) | F1-Score | ROC-AUC | Brier Score | Champion Status |
+|---|---|---|---|---|---|---|---|---|
+| **Engine Failure** | **Logistic Regression** | **Original Scaled** | **1.0000** | **0.9944** | **0.9972** | **1.0000** | **0.0001** | 🏆 **Champion** |
+| Engine Failure | Random Forest | Original Scaled | 1.0000 | 0.9556 | 0.9773 | 1.0000 | 0.0024 | Evaluated |
+| Engine Failure | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | Evaluated |
+| **Brake Issue** | **Random Forest** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | **0.0012** | 🏆 **Champion** |
+| Brake Issue | Logistic Regression | Original Scaled | 0.6984 | 0.9778 | 0.8149 | 0.9971 | 0.0226 | Evaluated |
+| Brake Issue | XGBoost | Original Scaled | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 0.0000 | Evaluated |
+| **Battery Issue** | **Random Forest** | **Original Scaled** | **1.0000** | **1.0000** | **1.0000** | **1.0000** | **0.0002** | 🏆 **Champion** |
+| Battery Issue | Logistic Regression | Original Scaled | 1.0000 | 0.9958 | 0.9979 | 1.0000 | 0.0003 | Evaluated |
+| Battery Issue | XGBoost | Original Scaled | 1.0000 | 0.9958 | 0.9979 | 1.0000 | 0.0003 | Evaluated |
 
-All champion models and preprocessors were serialized with `joblib` into `models/` and registered in MLflow Model Registry under `Vehicle_Engine_Failure_Predictor`, `Vehicle_Brake_Failure_Predictor`, and `Vehicle_Battery_Failure_Predictor`.
+All champion models and preprocessors were serialized with `joblib` into `models/` and registered in MLflow Model Registry under `Vehicle_Engine_Predictor`, `Vehicle_Brake_Predictor`, and `Vehicle_Battery_Predictor`.
 
 ### Discussion on Model Performance & Independent Validation Results
 - **Why are Benchmark Recall and ROC-AUC Near 100%?** In our synthetic physics-based simulator, vehicle component degradation follows defined thermodynamic and mechanical degradation functions (e.g. coolant dissipation leading to thermal runaway, brake pad friction thinning). Consequently, the 38 engineered features provide clear linear and non-linear separation between healthy and imminent failure states.

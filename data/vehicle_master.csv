@@ -1,51 +1,51 @@
-vehicle_id,brand,vehicle_year,model,fuel_type,base_hub,base_lat,base_lon
-VH-1001,BMW,2018,X5,Hybrid,Chicago Hub,41.8781,-87.6298
-VH-1002,Ford,2019,F-150,Gasoline,San Francisco Bay,37.7749,-122.4194
-VH-1003,BMW,2022,i4,Electric,San Francisco Bay,37.7749,-122.4194
-VH-1004,Freightliner,2018,M2 106,Diesel,San Francisco Bay,37.7749,-122.4194
-VH-1005,Toyota,2019,Camry,Gasoline,Atlanta Distribution,33.749,-84.388
-VH-1006,Freightliner,2022,Cascadia,Diesel,Los Angeles Metro,34.0522,-118.2437
-VH-1007,BMW,2023,i4,Electric,Atlanta Distribution,33.749,-84.388
-VH-1008,Tesla,2021,Model 3,Electric,Atlanta Distribution,33.749,-84.388
-VH-1009,Volvo,2024,VNL 760,Diesel,Los Angeles Metro,34.0522,-118.2437
-VH-1010,BMW,2020,330i,Gasoline,Chicago Hub,41.8781,-87.6298
-VH-1011,Ford,2024,F-150,Gasoline,Chicago Hub,41.8781,-87.6298
-VH-1012,Toyota,2021,Camry,Gasoline,San Francisco Bay,37.7749,-122.4194
-VH-1013,Volvo,2022,XC90,Hybrid,Chicago Hub,41.8781,-87.6298
-VH-1014,Toyota,2021,Tundra,Gasoline,Atlanta Distribution,33.749,-84.388
-VH-1015,Toyota,2018,RAV4,Hybrid,Atlanta Distribution,33.749,-84.388
-VH-1016,Volvo,2022,FH16,Diesel,Chicago Hub,41.8781,-87.6298
-VH-1017,Freightliner,2023,Cascadia,Diesel,San Francisco Bay,37.7749,-122.4194
-VH-1018,Toyota,2019,Tundra,Gasoline,Chicago Hub,41.8781,-87.6298
-VH-1019,Toyota,2024,Camry,Gasoline,San Francisco Bay,37.7749,-122.4194
-VH-1020,Tesla,2021,Model Y,Electric,Chicago Hub,41.8781,-87.6298
-VH-1021,Ford,2020,Explorer,Gasoline,Los Angeles Metro,34.0522,-118.2437
-VH-1022,BMW,2023,330i,Gasoline,San Francisco Bay,37.7749,-122.4194
-VH-1023,Freightliner,2022,Cascadia,Diesel,Los Angeles Metro,34.0522,-118.2437
-VH-1024,Ford,2021,Explorer,Gasoline,Chicago Hub,41.8781,-87.6298
-VH-1025,BMW,2022,i4,Electric,Los Angeles Metro,34.0522,-118.2437
-VH-1026,BMW,2024,330i,Gasoline,San Francisco Bay,37.7749,-122.4194
-VH-1027,Ford,2024,F-150,Gasoline,Chicago Hub,41.8781,-87.6298
-VH-1028,Tesla,2018,Model Y,Electric,Los Angeles Metro,34.0522,-118.2437
-VH-1029,Freightliner,2019,M2 106,Diesel,Dallas Logistics,32.7767,-96.797
-VH-1030,Tesla,2021,Semi,Electric,Los Angeles Metro,34.0522,-118.2437
-VH-1031,Volvo,2019,VNL 760,Diesel,Atlanta Distribution,33.749,-84.388
-VH-1032,Freightliner,2023,M2 106,Diesel,Atlanta Distribution,33.749,-84.388
-VH-1033,Tesla,2021,Semi,Electric,Chicago Hub,41.8781,-87.6298
-VH-1034,Ford,2022,F-150,Gasoline,Dallas Logistics,32.7767,-96.797
-VH-1035,Toyota,2024,Camry,Gasoline,San Francisco Bay,37.7749,-122.4194
-VH-1036,Ford,2019,Mach-E,Electric,Dallas Logistics,32.7767,-96.797
-VH-1037,Freightliner,2021,Cascadia,Diesel,Dallas Logistics,32.7767,-96.797
-VH-1038,Freightliner,2022,M2 106,Diesel,Chicago Hub,41.8781,-87.6298
-VH-1039,Freightliner,2023,Cascadia,Diesel,San Francisco Bay,37.7749,-122.4194
-VH-1040,BMW,2024,i4,Electric,Chicago Hub,41.8781,-87.6298
-VH-1041,BMW,2018,330i,Gasoline,Chicago Hub,41.8781,-87.6298
-VH-1042,Tesla,2021,Model 3,Electric,San Francisco Bay,37.7749,-122.4194
-VH-1043,BMW,2020,i4,Electric,Atlanta Distribution,33.749,-84.388
-VH-1044,Ford,2018,Mach-E,Electric,Chicago Hub,41.8781,-87.6298
-VH-1045,BMW,2022,i4,Electric,Los Angeles Metro,34.0522,-118.2437
-VH-1046,Ford,2024,Explorer,Gasoline,Los Angeles Metro,34.0522,-118.2437
-VH-1047,Freightliner,2022,Cascadia,Diesel,Chicago Hub,41.8781,-87.6298
-VH-1048,Tesla,2018,Model 3,Electric,Chicago Hub,41.8781,-87.6298
-VH-1049,Volvo,2018,VNL 760,Diesel,Los Angeles Metro,34.0522,-118.2437
-VH-1050,Freightliner,2018,Cascadia,Diesel,Dallas Logistics,32.7767,-96.797
+vehicle_id,brand,vehicle_year,model,fuel_type,base_hub,base_lat,base_lon,profile,electrical_system,brake_configuration
+VH-1001,Tata,2023,Nexon,Petrol,Bengaluru Hub,12.9716,77.5946,A,12V,Hydraulic Disc
+VH-1002,Mahindra,2022,XUV700,Diesel,Mumbai Distribution,19.076,72.8777,A,12V,Hydraulic Disc
+VH-1003,Maruti Suzuki,2021,Baleno,Petrol,Delhi Hub,28.6139,77.209,A,12V,Hydraulic Disc
+VH-1004,Ashok Leyland,2020,1616 Truck,Diesel,Chennai Logistics,13.0827,80.2707,C,12V,Pneumatic/Hydraulic Disc
+VH-1005,Eicher,2022,Pro 2049,Diesel,Hyderabad Hub,17.385,78.4867,C,12V,Pneumatic/Hydraulic Disc
+VH-1006,BharatBenz,2023,3528C Truck,Diesel,Pune Distribution,18.5204,73.8567,D,24V,Pneumatic S-Cam/Disc
+VH-1007,Tata,2024,Punch,Petrol,Manipal Hub,13.3525,74.7928,A,12V,Hydraulic Disc
+VH-1008,Mahindra,2021,Scorpio N,Diesel,Bengaluru Hub,12.9716,77.5946,A,12V,Hydraulic Disc
+VH-1009,Tata,2020,Altroz,Petrol,Mumbai Distribution,19.076,72.8777,A,12V,Hydraulic Disc
+VH-1010,Hyundai,2022,Creta,Diesel,Delhi Hub,28.6139,77.209,A,12V,Hydraulic Disc
+VH-1011,Tata,2023,Tiago,Petrol,Chennai Logistics,13.0827,80.2707,A,12V,Hydraulic Disc
+VH-1012,Mahindra,2024,XUV 3XO,Petrol,Hyderabad Hub,17.385,78.4867,A,12V,Hydraulic Disc
+VH-1013,Ashok Leyland,2021,Partner Truck,Diesel,Pune Distribution,18.5204,73.8567,C,12V,Pneumatic/Hydraulic Disc
+VH-1014,Eicher,2020,Pro 3015,Diesel,Manipal Hub,13.3525,74.7928,C,12V,Pneumatic/Hydraulic Disc
+VH-1015,Tata,2022,Prima 5530.S,Diesel,Bengaluru Hub,12.9716,77.5946,D,24V,Pneumatic S-Cam/Disc
+VH-1016,Maruti Suzuki,2024,Swift,Petrol,Mumbai Distribution,19.076,72.8777,A,12V,Hydraulic Disc
+VH-1017,Tata,2021,Harrier,Diesel,Delhi Hub,28.6139,77.209,A,12V,Hydraulic Disc
+VH-1018,Mahindra,2023,Bolero,Diesel,Chennai Logistics,13.0827,80.2707,B,12V,Hydraulic Disc/Drum
+VH-1019,BharatBenz,2022,1917R Truck,Diesel,Hyderabad Hub,17.385,78.4867,C,12V,Pneumatic/Hydraulic Disc
+VH-1020,Eicher,2024,Pro 2059,Diesel,Pune Distribution,18.5204,73.8567,C,12V,Pneumatic/Hydraulic Disc
+VH-1021,Tata,2020,Tigor,Petrol,Manipal Hub,13.3525,74.7928,A,12V,Hydraulic Disc
+VH-1022,Hyundai,2023,Venue,Petrol,Bengaluru Hub,12.9716,77.5946,A,12V,Hydraulic Disc
+VH-1023,Ashok Leyland,2024,AVTR 2820 Truck,Diesel,Mumbai Distribution,19.076,72.8777,D,24V,Pneumatic S-Cam/Disc
+VH-1024,Mahindra,2019,Bolero Pickup,Diesel,Delhi Hub,28.6139,77.209,B,12V,Hydraulic Disc/Drum
+VH-1025,Tata,2022,Intra V30,Diesel,Chennai Logistics,13.0827,80.2707,B,12V,Hydraulic Disc/Drum
+VH-1026,Maruti Suzuki,2021,Brezza,Petrol,Hyderabad Hub,17.385,78.4867,A,12V,Hydraulic Disc
+VH-1027,BharatBenz,2020,2823R Truck,Diesel,Pune Distribution,18.5204,73.8567,D,24V,Pneumatic S-Cam/Disc
+VH-1028,Eicher,2023,Pro 3019,Diesel,Manipal Hub,13.3525,74.7928,C,12V,Pneumatic/Hydraulic Disc
+VH-1029,Tata,2024,Safari,Diesel,Bengaluru Hub,12.9716,77.5946,A,12V,Hydraulic Disc
+VH-1030,Mahindra,2022,Thar,Diesel,Mumbai Distribution,19.076,72.8777,B,12V,Hydraulic Disc/Drum
+VH-1031,BMW,2018,X5,Hybrid,Chicago Hub,41.8781,-87.6298,A,12V,Hydraulic Disc
+VH-1032,Ford,2019,F-150,Gasoline,San Francisco Bay,37.7749,-122.4194,B,12V,Hydraulic Disc/Drum
+VH-1033,BMW,2022,330i,Gasoline,San Francisco Bay,37.7749,-122.4194,A,12V,Hydraulic Disc
+VH-1034,Volvo,2018,VNL 760,Diesel,Los Angeles Metro,34.0522,-118.2437,D,24V,Pneumatic S-Cam/Disc
+VH-1035,Toyota,2019,Camry,Gasoline,Atlanta Distribution,33.749,-84.388,A,12V,Hydraulic Disc
+VH-1036,Volvo,2022,FH16,Diesel,Chicago Hub,41.8781,-87.6298,D,24V,Pneumatic S-Cam/Disc
+VH-1037,BMW,2023,X3,Gasoline,Atlanta Distribution,33.749,-84.388,A,12V,Hydraulic Disc
+VH-1038,Toyota,2021,RAV4,Hybrid,Dallas Logistics,32.7767,-96.797,A,12V,Hydraulic Disc
+VH-1039,Ford,2020,Explorer,Gasoline,Los Angeles Metro,34.0522,-118.2437,A,12V,Hydraulic Disc
+VH-1040,BMW,2024,530i,Gasoline,Chicago Hub,41.8781,-87.6298,A,12V,Hydraulic Disc
+VH-1041,Toyota,2021,Tundra,Gasoline,Atlanta Distribution,33.749,-84.388,B,12V,Hydraulic Disc/Drum
+VH-1042,Volvo,2024,VNL 760,Diesel,Los Angeles Metro,34.0522,-118.2437,D,24V,Pneumatic S-Cam/Disc
+VH-1043,Ford,2022,Ranger,Gasoline,Dallas Logistics,32.7767,-96.797,B,12V,Hydraulic Disc/Drum
+VH-1044,BMW,2020,X5,Diesel,Chicago Hub,41.8781,-87.6298,A,12V,Hydraulic Disc
+VH-1045,Toyota,2022,Camry,Hybrid,San Francisco Bay,37.7749,-122.4194,A,12V,Hydraulic Disc
+VH-1046,Ford,2024,F-150,Gasoline,Chicago Hub,41.8781,-87.6298,B,12V,Hydraulic Disc/Drum
+VH-1047,Volvo,2022,XC90,Hybrid,Chicago Hub,41.8781,-87.6298,A,12V,Hydraulic Disc
+VH-1048,Toyota,2018,Corolla,Gasoline,Dallas Logistics,32.7767,-96.797,A,12V,Hydraulic Disc
+VH-1049,BMW,2023,330i,Gasoline,San Francisco Bay,37.7749,-122.4194,A,12V,Hydraulic Disc
+VH-1050,Volvo,2023,FH Truck,Diesel,Los Angeles Metro,34.0522,-118.2437,D,24V,Pneumatic S-Cam/Disc

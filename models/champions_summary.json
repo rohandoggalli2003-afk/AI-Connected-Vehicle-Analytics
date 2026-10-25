@@ -11,24 +11,26 @@
     "Constraint_Violation_Flag": false,
     "Test_Metrics": {
       "Precision": 1.0,
-      "Recall": 1.0,
-      "F1-Score": 1.0,
+      "Recall": 0.9944,
+      "F1-Score": 0.9972,
       "ROC-AUC": 1.0,
       "PR-AUC": 1.0,
-      "Brier_Score": 0.0,
+      "Brier_Score": 0.0001,
       "FPR": 0.0,
-      "TP": 180,
+      "TP": 179,
       "FP": 0,
-      "FN": 0,
+      "FN": 1,
       "TN": 2820,
-      "Operational_Cost": 0,
+      "Operational_Cost": 5000,
       "Calibration_Curve": {
         "prob_true": [
           0.0,
+          1.0,
           1.0
         ],
         "prob_pred": [
           0.0001,
+          0.3371,
           1.0
         ]
       }
@@ -41,15 +43,15 @@
       "pca_components": null
     },
     "Precision": 1.0,
-    "Recall": 1.0,
-    "F1-Score": 1.0,
+    "Recall": 0.9944,
+    "F1-Score": 0.9972,
     "ROC-AUC": 1.0,
     "PR-AUC": 1.0,
-    "Brier_Score": 0.0,
+    "Brier_Score": 0.0001,
     "FPR": 0.0,
-    "FN": 0,
+    "FN": 1,
     "FP": 0,
-    "Operational_Cost": 0
+    "Operational_Cost": 5000
   },
   "brake": {
     "Target": "brake",
@@ -67,7 +69,7 @@
       "F1-Score": 1.0,
       "ROC-AUC": 1.0,
       "PR-AUC": 1.0,
-      "Brier_Score": 0.0011,
+      "Brier_Score": 0.0012,
       "FPR": 0.0,
       "TP": 180,
       "FP": 0,
@@ -79,13 +81,15 @@
           0.0,
           1.0,
           1.0,
+          1.0,
           1.0
         ],
         "prob_pred": [
-          0.001,
-          0.7737,
-          0.8628,
-          0.9189
+          0.0011,
+          0.6987,
+          0.7638,
+          0.8539,
+          0.9279
         ]
       }
     },
@@ -101,7 +105,7 @@
     "F1-Score": 1.0,
     "ROC-AUC": 1.0,
     "PR-AUC": 1.0,
-    "Brier_Score": 0.0011,
+    "Brier_Score": 0.0012,
     "FPR": 0.0,
     "FN": 0,
     "FP": 0,
@@ -109,12 +113,12 @@
   },
   "battery": {
     "Target": "battery",
-    "Model": "LogisticRegression",
+    "Model": "RandomForest",
     "Features": "Original_Scaled",
-    "Validation_Recall": 1.0,
+    "Validation_Recall": 0.9958,
     "Validation_Precision": 1.0,
     "Validation_PR_AUC": 1.0,
-    "Validation_Cost": 0,
+    "Validation_Cost": 5000,
     "Validation_Meets_Constraints": true,
     "Constraint_Violation_Flag": false,
     "Test_Metrics": {
@@ -123,7 +127,7 @@
       "F1-Score": 1.0,
       "ROC-AUC": 1.0,
       "PR-AUC": 1.0,
-      "Brier_Score": 0.0,
+      "Brier_Score": 0.0002,
       "FPR": 0.0,
       "TP": 240,
       "FP": 0,
@@ -133,11 +137,17 @@
       "Calibration_Curve": {
         "prob_true": [
           0.0,
+          1.0,
+          1.0,
+          1.0,
           1.0
         ],
         "prob_pred": [
-          0.0,
-          0.9999
+          0.0001,
+          0.6583,
+          0.7862,
+          0.8433,
+          0.9888
         ]
       }
     },
@@ -153,7 +163,7 @@
     "F1-Score": 1.0,
     "ROC-AUC": 1.0,
     "PR-AUC": 1.0,
-    "Brier_Score": 0.0,
+    "Brier_Score": 0.0002,
     "FPR": 0.0,
     "FN": 0,
     "FP": 0,
@@ -170,23 +180,23 @@
     "description": "Validation of P_joint = 1 - (1-Pe)(1-Pb)(1-Pbat) against ground-truth union failure outcomes.",
     "test_samples": 3000,
     "actual_joint_failures": 600,
-    "estimated_joint_brier_score": 0.0011,
+    "estimated_joint_brier_score": 0.0015,
     "estimated_joint_pr_auc": 1.0,
     "estimated_joint_roc_auc": 1.0,
     "pairwise_correlations": {
       "engine": {
         "engine": 1.0,
-        "brake": -0.06382978723404267,
-        "battery": -0.07450111597299094
+        "brake": -0.06382978723404265,
+        "battery": -0.07450111597299133
       },
       "brake": {
-        "engine": -0.06382978723404267,
+        "engine": -0.06382978723404265,
         "brake": 1.0,
-        "battery": -0.0745011159729913
+        "battery": -0.0745011159729914
       },
       "battery": {
-        "engine": -0.07450111597299094,
-        "brake": -0.0745011159729913,
+        "engine": -0.07450111597299133,
+        "brake": -0.0745011159729914,
         "battery": 1.0
       }
     },

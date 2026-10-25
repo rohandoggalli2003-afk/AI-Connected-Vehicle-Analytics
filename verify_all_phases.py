@@ -103,15 +103,21 @@ def verify_all_phases():
     df_silver = df_bronze.drop_duplicates(subset=["vehicle_id", "timestamp"]).copy()
     df_silver["vehicle_speed_kph"] = df_silver["vehicle_speed_kph"].clip(0.0, 200.0)
     df_silver["engine_rpm"] = df_silver["engine_rpm"].clip(0.0, 8000.0)
-    df_silver["battery_voltage_v"] = df_silver["battery_voltage_v"].clip(5.0, 20.0)
-    df_silver["brake_pad_wear_mm"] = df_silver["brake_pad_wear_mm"].clip(0.0, 20.0)
+    df_silver["battery_voltage_v"] = df_silver["battery_voltage_v"].clip(5.0, 36.0)
+    df_silver["brake_pad_wear_mm"] = df_silver["brake_pad_wear_mm"].clip(0.0, 25.0)
     df_silver = df_silver.merge(df_master, on="vehicle_id", how="inner")
     
-    # Event flags
+    # Event flags respecting electrical and brake configuration
+    is_24v = df_silver.get("electrical_system", "") == "24V"
+    batt_warn_v = np.where(is_24v, 23.6, 11.8)
+    
+    is_prof_d = df_silver.get("profile", "") == "D"
+    brake_warn_mm = np.where(is_prof_d, 6.4, 3.2)
+
     df_silver["is_overheating"] = (df_silver["engine_temp_c"] > 105.0) | (df_silver["coolant_temp_c"] > 108.0)
     df_silver["is_low_oil"] = df_silver["oil_pressure_psi"] < 20.0
-    df_silver["is_worn_brakes"] = df_silver["brake_pad_wear_mm"] < 3.0
-    df_silver["is_battery_critical"] = (df_silver["battery_voltage_v"] < 11.8) | (df_silver["battery_health_percent"] < 50.0)
+    df_silver["is_worn_brakes"] = df_silver["brake_pad_wear_mm"] < brake_warn_mm
+    df_silver["is_battery_critical"] = (df_silver["battery_voltage_v"] < batt_warn_v) | (df_silver["battery_health_percent"] < 50.0)
     
     assert len(df_silver) > 0 and "brand" in df_silver.columns
     print(f" [PASS] A.4: Silver Cleansing & Join: Deduplicated ({init_cnt} -> {len(df_silver)}), clipped boundaries, joined with vehicle_master.")
@@ -135,12 +141,28 @@ def verify_all_phases():
         e_risk = (50 if max_eng > 115 else (30 if max_eng > 105 else 0)) + \
                  (40 if min_oil < 15 else (20 if min_oil < 25 else 0)) + \
                  (20 if max_vib > 3.5 else 0)
-        b_risk = (60 if min_brk < 2.0 else (30 if min_brk < 3.5 else 0)) + \
+
+        # Dynamic brake wear thresholds per profile
+        prof = meta.get("profile", "A")
+        b_warn = 6.4 if prof == "D" else (4.0 if prof == "B" else 3.2)
+        b_crit = 3.2 if prof == "D" else (2.0 if prof == "B" else 2.2)
+        b_risk = (60 if min_brk <= b_crit else (30 if min_brk <= b_warn else 0)) + \
                  (30 if max_brk_t > 280 else 0) + \
                  (25 if abs_err > 0 else 0)
-        bat_risk = (50 if min_bat_v < 11.5 else (25 if min_bat_v < 12.2 else 0)) + \
-                   (40 if min_bat_soh < 45 else (20 if min_bat_soh < 65 else 0)) + \
-                   (30 if avg_alt_v < 12.8 else 0)
+
+        # Dynamic electrical thresholds per architecture (12V vs 24V vs unknown)
+        elec = meta.get("electrical_system", "12V")
+        if elec == "24V":
+            bat_risk = (50 if min_bat_v <= 22.0 else (25 if min_bat_v <= 23.6 else 0)) + \
+                       (40 if min_bat_soh < 45 else (20 if min_bat_soh < 65 else 0)) + \
+                       (30 if avg_alt_v < 25.6 else 0)
+        elif elec == "12V":
+            bat_risk = (50 if min_bat_v <= 11.0 else (25 if min_bat_v <= 11.8 else 0)) + \
+                       (40 if min_bat_soh < 45 else (20 if min_bat_soh < 65 else 0)) + \
+                       (30 if avg_alt_v < 12.8 else 0)
+        else:
+            bat_risk = 0  # Unknown configuration: thresholds suspended
+
         overall = max(e_risk, b_risk, bat_risk)
         status = "CRITICAL" if overall >= 60 else ("WARNING" if overall >= 30 else "HEALTHY")
 
@@ -262,11 +284,75 @@ def verify_all_phases():
     # Verify centralized configs & engineering basis governance
     safety_cfg_path = os.path.join(PROJECT_ROOT, "config", "safety_thresholds.json")
     assert os.path.exists(safety_cfg_path), "Missing config/safety_thresholds.json"
-    with open(safety_cfg_path, "r") as f:
+    with open(safety_cfg_path, "r", encoding="utf-8") as f:
         safety_cfg = json.load(f)
     assert safety_cfg.get("document_classification") == "conservative_prototype_heuristic_specification"
     assert "PENDING_FORMAL_OEM" in safety_cfg.get("review_status", "")
     assert "engineering_limitations" in safety_cfg["subsystems"]["brake"]
+
+    # Verify vehicle-specific thresholds config (Profiles A, B, C, D & 50 vehicles)
+    v_thresh_path = os.path.join(PROJECT_ROOT, "config", "vehicle_thresholds.json")
+    assert os.path.exists(v_thresh_path), "Missing config/vehicle_thresholds.json"
+    with open(v_thresh_path, "r", encoding="utf-8") as f:
+        v_thresh_cfg = json.load(f)
+    assert set(v_thresh_cfg.get("profiles", {}).keys()) == {"A", "B", "C", "D"}, "Missing threshold profiles!"
+    assert len(v_thresh_cfg.get("vehicles", [])) == 50, "Expected 50 vehicle threshold entries!"
+    # Verify Mahindra XUV700 specific 113C / 115C threshold preservation
+    xuv_entry = next((v for v in v_thresh_cfg["vehicles"] if v["vehicle_id"] == "VH-1002"), None)
+    assert xuv_entry is not None, "Missing VH-1002 (XUV700) entry!"
+    assert xuv_entry["engine_warning_temp_c"] == 113.0 and xuv_entry["engine_critical_temp_c"] == 115.0, "XUV700 thresholds mismatch!"
+    assert xuv_entry["threshold_status"] == "documented_manual_heuristic"
+
+    # Verify 12V vs 24V Architecture and Comparison Logic
+    # 1. 12V Vehicle (VH-1001): 11.5V is warning, 10.5V is critical
+    rec_12v_warn = {"vehicle_id": "VH-1001", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 8.0, "battery_voltage_v": 11.5}
+    res_12v_warn = pred_instance.predict_record(rec_12v_warn)
+    assert any("Battery Voltage Warning" in a for a in res_12v_warn["safety_alerts"]), "12V 11.5V warning failed!"
+
+    rec_12v_crit = {"vehicle_id": "VH-1001", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 8.0, "battery_voltage_v": 10.5}
+    res_12v_crit = pred_instance.predict_record(rec_12v_crit)
+    assert any("Critically Low Battery Voltage" in a for a in res_12v_crit["safety_alerts"]), "12V 10.5V critical failed!"
+
+    # 2. 24V Heavy Commercial Truck (VH-1006): 23.0V is warning, 21.5V is critical
+    rec_24v_warn = {"vehicle_id": "VH-1006", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 15.0, "battery_voltage_v": 23.0}
+    res_24v_warn = pred_instance.predict_record(rec_24v_warn)
+    assert any("Battery Voltage Warning" in a for a in res_24v_warn["safety_alerts"]), "24V 23.0V warning failed!"
+
+    rec_24v_crit = {"vehicle_id": "VH-1006", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 15.0, "battery_voltage_v": 21.5}
+    res_24v_crit = pred_instance.predict_record(rec_24v_crit)
+    assert any("Critically Low Battery Voltage" in a for a in res_24v_crit["safety_alerts"]), "24V 21.5V critical failed!"
+
+    # 3. Unknown Electrical Configuration: flags alert and suspends voltage thresholds
+    rec_unk_elec = {"vehicle_id": "VH-TEST-UNK", "electrical_system": "48V", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 8.0, "battery_voltage_v": 11.2}
+    res_unk_elec = pred_instance.predict_record(rec_unk_elec)
+    assert res_unk_elec["configuration_status"] == "UNKNOWN_CONFIGURATION", "Failed to flag unknown configuration status!"
+    assert any("Unknown electrical system configuration" in a for a in res_unk_elec["safety_alerts"]), "Failed to emit unknown electrical alert!"
+    assert not any("Battery Voltage Warning" in a for a in res_unk_elec["safety_alerts"]), "Should not apply 12V threshold to unknown configuration!"
+
+    # 4. Unknown Brake Configuration: flags alert and suspends brake wear thresholds
+    rec_unk_brake = {"vehicle_id": "VH-TEST-UNK2", "brake_configuration": "Ceramic Matrix", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 1.5, "battery_voltage_v": 13.5}
+    res_unk_brake = pred_instance.predict_record(rec_unk_brake)
+    assert res_unk_brake["configuration_status"] == "UNKNOWN_CONFIGURATION", "Failed to flag unknown brake configuration!"
+    assert any("Unknown brake configuration" in a for a in res_unk_brake["safety_alerts"]), "Failed to emit unknown brake alert!"
+    assert not any("Worn Brake Pads" in a for a in res_unk_brake["safety_alerts"]), "Should not apply brake wear threshold to unknown configuration!"
+
+    # 5. Brake wear thresholds per profile: Profile D (VH-1006) 5.0mm is warning, Profile A (VH-1001) 5.0mm is healthy
+    rec_prof_d = {"vehicle_id": "VH-1006", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 5.0, "battery_voltage_v": 27.4}
+    res_prof_d = pred_instance.predict_record(rec_prof_d)
+    assert any("Worn Brake Pads Warning" in a for a in res_prof_d["safety_alerts"]), "Profile D 5.0mm pad warning check failed!"
+
+    rec_prof_a = {"vehicle_id": "VH-1001", "engine_temp_c": 90.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 5.0, "battery_voltage_v": 13.7}
+    res_prof_a = pred_instance.predict_record(rec_prof_a)
+    assert not any("Worn Brake Pads" in a for a in res_prof_a["safety_alerts"]), "Profile A 5.0mm pad should be healthy!"
+
+    # 6. High engine temperature comparison logic: >= 112C is critical, >= 105C is warning
+    rec_eng_crit = {"vehicle_id": "VH-1001", "engine_temp_c": 113.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 8.0, "battery_voltage_v": 13.7}
+    res_eng_crit = pred_instance.predict_record(rec_eng_crit)
+    assert any("Engine Overheating" in a for a in res_eng_crit["safety_alerts"]), "Engine overheat critical logic failed!"
+
+    rec_eng_warn = {"vehicle_id": "VH-1001", "engine_temp_c": 107.0, "oil_pressure_psi": 45.0, "brake_pad_wear_mm": 8.0, "battery_voltage_v": 13.7}
+    res_eng_warn = pred_instance.predict_record(rec_eng_warn)
+    assert any("Engine Temperature Warning" in a for a in res_eng_warn["safety_alerts"]), "Engine temp warning logic failed!"
 
     # Verify cost model illustrative labeling and joint probability validation in summary
     assert "cost_model_governance" in champ_summary
