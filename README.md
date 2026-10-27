@@ -177,7 +177,8 @@ streamlit run dashboard/app.py
   - Total Monitored Fleet, Healthy, Warning, and Critical KPI summary cards.
   - Interactive standard GPS geolocation map (`st.map`) with filterable regional presets (India Hubs, US Hubs, Global).
   - Main Fleet Table displaying Vehicle ID, Brand, Model, Year, Configuration Profile, Health Status, Failure Probability progress bar, and real-time sensor metrics.
-  - Interactive AI Diagnostic Work Order generator and `.txt` download.
+  - Sidebar now includes a **Reload Fleet Cache** button to refresh the Delta Lake cache on‑demand.
+- Interactive AI Diagnostic Work Order generator and `.txt` download.
 
 ### B. Run Live Streaming Telematics Simulator
 ```bash
