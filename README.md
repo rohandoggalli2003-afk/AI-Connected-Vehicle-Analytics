@@ -1,4 +1,4 @@
-# AI-Powered Connected Vehicle Analytics Platform (BDA)
+# Real-Time Connected Vehicle Analytics and Predictive Maintenance System
 
 An end-to-end Big Data Analytics (BDA) platform for real-time connected vehicle telematics ingestion, component failure prediction, AI-assisted maintenance reporting, and fleet health monitoring.
 
